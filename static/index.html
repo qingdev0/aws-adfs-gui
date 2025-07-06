@@ -19,7 +19,14 @@
       <!-- Header -->
       <header class="row bg-dark text-white py-2 align-items-center">
         <div class="col-md-6">
-          <h4 class="mb-0">
+          <button
+            class="btn btn-outline-light btn-sm me-3 d-none"
+            id="showPanelBtn"
+            title="Show Profile Panel"
+          >
+            <i class="fas fa-chevron-right"></i>
+          </button>
+          <h4 class="mb-0 d-inline">
             <i class="fas fa-cloud text-primary me-2"></i>
             AWS ADFS GUI
           </h4>
@@ -62,7 +69,20 @@
       <!-- Main Content -->
       <div class="row flex-fill">
         <!-- Left Panel - Profile Management -->
-        <div class="col-md-3 bg-light p-3 border-end">
+        <div class="bg-light border-end" id="leftPanel" style="padding: 1rem">
+          <!-- Panel Header with Toggle Button -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="text-primary mb-0">
+              <i class="fas fa-users me-2"></i>Profiles
+            </h6>
+            <button
+              class="btn btn-outline-secondary btn-sm"
+              id="togglePanelBtn"
+              title="Hide Panel"
+            >
+              <i class="fas fa-chevron-left"></i>
+            </button>
+          </div>
           <!-- Dev Profiles Section -->
           <div class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -263,10 +283,17 @@
               </div>
             </div>
           </div>
+
+          <!-- Resize Handle -->
+          <div
+            class="resize-handle"
+            id="resizeHandle"
+            title="Drag to resize panel"
+          ></div>
         </div>
 
         <!-- Right Panel - Tabbed Results -->
-        <div class="col-md-9 d-flex flex-column">
+        <div class="d-flex flex-column" id="rightPanel">
           <!-- Tab Navigation -->
           <div class="border-bottom">
             <ul class="nav nav-tabs" id="profileTabs" role="tablist">

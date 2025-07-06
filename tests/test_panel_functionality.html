@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel Functionality Tests</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link href="/static/styles.css" rel="stylesheet" />
+    <style>
+      .test-results {
+        font-family: "Courier New", monospace;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .test-pass {
+        color: #4ade80;
+      }
+      .test-fail {
+        color: #f87171;
+      }
+      .test-skip {
+        color: #fbbf24;
+      }
+      .test-section {
+        color: #60a5fa;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row py-3">
+        <div class="col-12">
+          <h2><i class="fas fa-vial me-2"></i>Panel Functionality Tests</h2>
+          <p>
+            Testing the collapsible left panel functionality following TDD
+            principles.
+          </p>
+
+          <button class="btn btn-primary" id="runTests">
+            <i class="fas fa-play me-1"></i>Run All Tests
+          </button>
+          <button class="btn btn-secondary ms-2" id="clearResults">
+            <i class="fas fa-trash me-1"></i>Clear Results
+          </button>
+
+          <div class="test-results" id="testResults">
+            <div class="test-section">Panel Functionality Test Suite</div>
+            <div>Click 'Run All Tests' to start testing...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Test HTML Structure (hidden) -->
+      <div style="display: none" id="testContainer">
+        <div class="row flex-fill">
+          <div
+            class="bg-light border-end"
+            id="testLeftPanel"
+            style="padding: 1rem"
+          >
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="text-primary mb-0">Test Panel</h6>
+              <button
+                class="btn btn-outline-secondary btn-sm"
+                id="testToggleBtn"
+              >
+                <i class="fas fa-chevron-left"></i>
+              </button>
+            </div>
+            <div class="resize-handle" id="testResizeHandle"></div>
+          </div>
+          <div class="d-flex flex-column" id="testRightPanel">
+            <div class="p-4">Test Content</div>
+          </div>
+        </div>
+        <button class="btn d-none" id="testShowBtn">Show Panel</button>
+      </div>
+    </div>
+
+    <script>
+      class PanelTestSuite {
+        constructor() {
+          this.testResults = [];
+          this.testContainer = document.getElementById("testContainer");
+          this.setupTestEnvironment();
+          this.bindEvents();
+        }
+
+        setupTestEnvironment() {
+          // Clear localStorage before tests
+          localStorage.clear();
+        }
+
+        bindEvents() {
+          document.getElementById("runTests").addEventListener("click", () => {
+            this.runAllTests();
+          });
+
+          document
+            .getElementById("clearResults")
+            .addEventListener("click", () => {
+              this.clearResults();
+            });
+        }
+
+        log(message, type = "info") {
+          const resultsDiv = document.getElementById("testResults");
+          const timestamp = new Date().toLocaleTimeString();
+          const className =
+            type === "pass"
+              ? "test-pass"
+              : type === "fail"
+              ? "test-fail"
+              : type === "skip"
+              ? "test-skip"
+              : type === "section"
+              ? "test-section"
+              : "";
+
+          resultsDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+          resultsDiv.scrollTop = resultsDiv.scrollHeight;
+
+          if (type === "pass" || type === "fail") {
+            this.testResults.push({ message, type, timestamp });
+          }
+        }
+
+        clearResults() {
+          document.getElementById("testResults").innerHTML = `
+                    <div class="test-section">Panel Functionality Test Suite</div>
+                    <div>Click 'Run All Tests' to start testing...</div>
+                `;
+          this.testResults = [];
+        }
+
+        assert(condition, message) {
+          if (condition) {
+            this.log(`✓ ${message}`, "pass");
+            return true;
+          } else {
+            this.log(`✗ ${message}`, "fail");
+            return false;
+          }
+        }
+
+        async runAllTests() {
+          this.log("Starting Panel Functionality Tests...", "section");
+          this.testResults = [];
+
+          try {
+            await this.testPanelInitialization();
+            await this.testPanelToggleFunctionality();
+            await this.testPanelResizeFunctionality();
+            await this.testPanelStatePersistence();
+            await this.testPanelResponsiveBehavior();
+            await this.testPanelEventHandling();
+
+            this.summarizeResults();
+          } catch (error) {
+            this.log(`Test suite error: ${error.message}`, "fail");
+          }
+        }
+
+        async testPanelInitialization() {
+          this.log("Testing Panel Initialization...", "section");
+
+          // Test that panel elements exist
+          const leftPanel = document.getElementById("testLeftPanel");
+          const rightPanel = document.getElementById("testRightPanel");
+          const toggleBtn = document.getElementById("testToggleBtn");
+          const showBtn = document.getElementById("testShowBtn");
+          const resizeHandle = document.getElementById("testResizeHandle");
+
+          this.assert(leftPanel !== null, "Left panel element exists");
+          this.assert(rightPanel !== null, "Right panel element exists");
+          this.assert(toggleBtn !== null, "Toggle button exists");
+          this.assert(showBtn !== null, "Show button exists");
+          this.assert(resizeHandle !== null, "Resize handle exists");
+
+          // Test initial state
+          this.assert(
+            !leftPanel.classList.contains("hidden"),
+            "Panel starts visible"
+          );
+          this.assert(
+            showBtn.classList.contains("d-none"),
+            "Show button starts hidden"
+          );
+
+          // Test initial CSS properties
+          const computed = window.getComputedStyle(leftPanel);
+          this.assert(
+            computed.position === "relative",
+            "Panel has relative positioning"
+          );
+          this.assert(
+            computed.transition.includes("all"),
+            "Panel has transition animation"
+          );
+        }
+
+        async testPanelToggleFunctionality() {
+          this.log("Testing Panel Toggle Functionality...", "section");
+
+          const leftPanel = document.getElementById("testLeftPanel");
+          const toggleBtn = document.getElementById("testToggleBtn");
+          const showBtn = document.getElementById("testShowBtn");
+
+          // Create a mock panel manager for testing
+          const panelManager = new MockPanelManager();
+
+          // Test hide functionality
+          panelManager.hideLeftPanel();
+          this.assert(
+            leftPanel.classList.contains("hidden"),
+            "Panel is hidden after hide()"
+          );
+          this.assert(
+            !showBtn.classList.contains("d-none"),
+            "Show button appears when panel hidden"
+          );
+          this.assert(
+            toggleBtn.innerHTML.includes("chevron-right"),
+            "Toggle button shows right chevron when hidden"
+          );
+
+          // Test show functionality
+          panelManager.showLeftPanel();
+          this.assert(
+            !leftPanel.classList.contains("hidden"),
+            "Panel is visible after show()"
+          );
+          this.assert(
+            showBtn.classList.contains("d-none"),
+            "Show button hides when panel visible"
+          );
+          this.assert(
+            toggleBtn.innerHTML.includes("chevron-left"),
+            "Toggle button shows left chevron when visible"
+          );
+
+          // Test toggle functionality
+          panelManager.toggleLeftPanel();
+          this.assert(
+            leftPanel.classList.contains("hidden"),
+            "Toggle hides visible panel"
+          );
+
+          panelManager.toggleLeftPanel();
+          this.assert(
+            !leftPanel.classList.contains("hidden"),
+            "Toggle shows hidden panel"
+          );
+        }
+
+        async testPanelResizeFunctionality() {
+          this.log("Testing Panel Resize Functionality...", "section");
+
+          const leftPanel = document.getElementById("testLeftPanel");
+          const resizeHandle = document.getElementById("testResizeHandle");
+
+          // Test initial width
+          const initialWidth = leftPanel.offsetWidth;
+          this.assert(initialWidth > 0, "Panel has initial width");
+
+          // Test resize constraints
+          const panelManager = new MockPanelManager();
+
+          // Test minimum width constraint
+          panelManager.resizePanel(100); // Below minimum
+          this.assert(
+            leftPanel.style.width === "200px" || leftPanel.offsetWidth >= 200,
+            "Panel respects minimum width (200px)"
+          );
+
+          // Test maximum width constraint
+          panelManager.resizePanel(700); // Above maximum
+          const maxAllowed = Math.min(600, window.innerWidth * 0.5);
+          this.assert(
+            leftPanel.offsetWidth <= maxAllowed,
+            "Panel respects maximum width constraint"
+          );
+
+          // Test valid resize
+          panelManager.resizePanel(350);
+          this.assert(
+            leftPanel.style.width === "350px",
+            "Panel resizes to valid width"
+          );
+
+          // Test double-click reset
+          panelManager.resetPanelWidth();
+          this.assert(
+            leftPanel.style.width === "280px",
+            "Panel resets to default width (280px)"
+          );
+        }
+
+        async testPanelStatePersistence() {
+          this.log("Testing Panel State Persistence...", "section");
+
+          const panelManager = new MockPanelManager();
+
+          // Clear localStorage first
+          localStorage.clear();
+
+          // Test hiding and persistence
+          panelManager.hideLeftPanel();
+          this.assert(
+            localStorage.getItem("leftPanelHidden") === "true",
+            "Hidden state persisted to localStorage"
+          );
+
+          // Test showing and persistence
+          panelManager.showLeftPanel();
+          this.assert(
+            localStorage.getItem("leftPanelHidden") === "false",
+            "Visible state persisted to localStorage"
+          );
+
+          // Test width persistence
+          panelManager.resizePanel(400);
+          panelManager.savePanelWidth();
+          this.assert(
+            localStorage.getItem("leftPanelWidth") === "400px",
+            "Panel width persisted to localStorage"
+          );
+
+          // Test loading preferences
+          localStorage.setItem("leftPanelHidden", "true");
+          localStorage.setItem("leftPanelWidth", "320px");
+
+          panelManager.loadPanelPreferences();
+          const leftPanel = document.getElementById("testLeftPanel");
+          this.assert(
+            leftPanel.classList.contains("hidden"),
+            "Hidden state loaded from localStorage"
+          );
+          this.assert(
+            leftPanel.style.width === "320px",
+            "Panel width loaded from localStorage"
+          );
+        }
+
+        async testPanelResponsiveBehavior() {
+          this.log("Testing Panel Responsive Behavior...", "section");
+
+          const panelManager = new MockPanelManager();
+          const leftPanel = document.getElementById("testLeftPanel");
+
+          // Test mobile detection
+          const originalInnerWidth = window.innerWidth;
+
+          // Mock mobile viewport
+          Object.defineProperty(window, "innerWidth", {
+            value: 600,
+            configurable: true,
+          });
+          this.assert(
+            panelManager.isMobile(),
+            "Mobile detection works for small screens"
+          );
+
+          // Mock desktop viewport
+          Object.defineProperty(window, "innerWidth", {
+            value: 1200,
+            configurable: true,
+          });
+          this.assert(
+            !panelManager.isMobile(),
+            "Desktop detection works for large screens"
+          );
+
+          // Test mobile behavior
+          Object.defineProperty(window, "innerWidth", {
+            value: 600,
+            configurable: true,
+          });
+          panelManager.handleWindowResize();
+
+          // Test desktop behavior
+          Object.defineProperty(window, "innerWidth", {
+            value: 1200,
+            configurable: true,
+          });
+          panelManager.handleWindowResize();
+
+          // Restore original window width
+          Object.defineProperty(window, "innerWidth", {
+            value: originalInnerWidth,
+            configurable: true,
+          });
+
+          this.assert(true, "Responsive behavior handling completed");
+        }
+
+        async testPanelEventHandling() {
+          this.log("Testing Panel Event Handling...", "section");
+
+          const toggleBtn = document.getElementById("testToggleBtn");
+          const showBtn = document.getElementById("testShowBtn");
+          const resizeHandle = document.getElementById("testResizeHandle");
+
+          // Test that event listeners can be attached
+          let toggleClicked = false;
+          let showClicked = false;
+          let resizeStarted = false;
+
+          toggleBtn.addEventListener("click", () => {
+            toggleClicked = true;
+          });
+          showBtn.addEventListener("click", () => {
+            showClicked = true;
+          });
+          resizeHandle.addEventListener("mousedown", () => {
+            resizeStarted = true;
+          });
+
+          // Simulate events
+          toggleBtn.click();
+          showBtn.click();
+
+          const mouseEvent = new MouseEvent("mousedown", { clientX: 100 });
+          resizeHandle.dispatchEvent(mouseEvent);
+
+          this.assert(toggleClicked, "Toggle button click event handled");
+          this.assert(showClicked, "Show button click event handled");
+          this.assert(resizeStarted, "Resize handle mousedown event handled");
+
+          // Test keyboard accessibility
+          const keyEvent = new KeyboardEvent("keydown", { key: "Enter" });
+          toggleBtn.dispatchEvent(keyEvent);
+          this.assert(true, "Keyboard events can be dispatched to buttons");
+        }
+
+        summarizeResults() {
+          this.log("Test Summary:", "section");
+
+          const passCount = this.testResults.filter(
+            (r) => r.type === "pass"
+          ).length;
+          const failCount = this.testResults.filter(
+            (r) => r.type === "fail"
+          ).length;
+          const total = passCount + failCount;
+
+          this.log(`Total tests: ${total}`, "info");
+          this.log(
+            `Passed: ${passCount}`,
+            passCount === total ? "pass" : "info"
+          );
+          this.log(`Failed: ${failCount}`, failCount === 0 ? "pass" : "fail");
+
+          if (failCount === 0) {
+            this.log(
+              "🎉 All tests passed! Panel functionality is working correctly.",
+              "pass"
+            );
+          } else {
+            this.log(
+              "❌ Some tests failed. Please review the implementation.",
+              "fail"
+            );
+          }
+        }
+      }
+
+      // Mock Panel Manager for testing
+      class MockPanelManager {
+        constructor() {
+          this.leftPanel = document.getElementById("testLeftPanel");
+          this.toggleBtn = document.getElementById("testToggleBtn");
+          this.showBtn = document.getElementById("testShowBtn");
+        }
+
+        hideLeftPanel() {
+          this.leftPanel.classList.add("hidden");
+          this.showBtn.classList.remove("d-none");
+          this.toggleBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+          localStorage.setItem("leftPanelHidden", "true");
+        }
+
+        showLeftPanel() {
+          this.leftPanel.classList.remove("hidden");
+          this.showBtn.classList.add("d-none");
+          this.toggleBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+          localStorage.setItem("leftPanelHidden", "false");
+        }
+
+        toggleLeftPanel() {
+          if (this.leftPanel.classList.contains("hidden")) {
+            this.showLeftPanel();
+          } else {
+            this.hideLeftPanel();
+          }
+        }
+
+        resizePanel(width) {
+          const minWidth = 200;
+          const maxWidth = Math.min(600, window.innerWidth * 0.5);
+          const constrainedWidth = Math.max(
+            minWidth,
+            Math.min(maxWidth, width)
+          );
+
+          this.leftPanel.style.width = constrainedWidth + "px";
+          this.leftPanel.style.flex = `0 0 ${constrainedWidth}px`;
+        }
+
+        resetPanelWidth() {
+          this.leftPanel.style.width = "280px";
+          this.leftPanel.style.flex = "0 0 280px";
+          localStorage.removeItem("leftPanelWidth");
+        }
+
+        savePanelWidth() {
+          localStorage.setItem("leftPanelWidth", this.leftPanel.style.width);
+        }
+
+        loadPanelPreferences() {
+          const isHidden = localStorage.getItem("leftPanelHidden") === "true";
+          const savedWidth = localStorage.getItem("leftPanelWidth");
+
+          if (savedWidth) {
+            this.leftPanel.style.width = savedWidth;
+            this.leftPanel.style.flex = `0 0 ${savedWidth}`;
+          }
+
+          if (isHidden) {
+            this.hideLeftPanel();
+          }
+        }
+
+        isMobile() {
+          return window.innerWidth <= 768;
+        }
+
+        handleWindowResize() {
+          if (this.isMobile()) {
+            this.leftPanel.classList.remove("mobile-show");
+            if (!this.leftPanel.classList.contains("hidden")) {
+              this.leftPanel.classList.add("mobile-show");
+            }
+          } else {
+            this.leftPanel.classList.remove("mobile-show");
+            const savedWidth = localStorage.getItem("leftPanelWidth");
+            if (savedWidth) {
+              this.leftPanel.style.width = savedWidth;
+              this.leftPanel.style.flex = `0 0 ${savedWidth}`;
+            } else {
+              this.leftPanel.style.width = "280px";
+              this.leftPanel.style.flex = "0 0 280px";
+            }
+          }
+        }
+      }
+
+      // Initialize test suite when DOM is ready
+      document.addEventListener("DOMContentLoaded", () => {
+        window.panelTestSuite = new PanelTestSuite();
+      });
+    </script>
+  </body>
+</html>

@@ -14,10 +14,13 @@ class AWSADFSApp {
     }
 
     init() {
+        console.log('AWS ADFS App initializing...');
         this.setupEventListeners();
         this.setupWebSocket();
         this.loadSettings();
         this.loadHistory();
+        this.loadPanelPreferences();
+        console.log('AWS ADFS App initialized successfully');
     }
 
     setupEventListeners() {
@@ -56,6 +59,41 @@ class AWSADFSApp {
         // Test credentials
         document.getElementById('testCredentials').addEventListener('click', () => {
             this.testCredentials();
+        });
+
+        // Panel toggle buttons
+        const toggleBtn = document.getElementById('togglePanelBtn');
+        const showBtn = document.getElementById('showPanelBtn');
+
+        if (toggleBtn) {
+            console.log('Adding toggle button event listener');
+            toggleBtn.addEventListener('click', () => {
+                this.toggleLeftPanel();
+            });
+        } else {
+            console.error('Toggle button not found!');
+        }
+
+        if (showBtn) {
+            console.log('Adding show button event listener');
+            showBtn.addEventListener('click', () => {
+                this.showLeftPanel();
+            });
+        } else {
+            console.error('Show button not found!');
+        }
+
+        // Panel resize functionality
+        this.setupPanelResize();
+
+        // Window resize handling
+        window.addEventListener('resize', () => {
+            this.handleWindowResize();
+        });
+
+        // Click outside to close panel on mobile
+        document.addEventListener('click', (e) => {
+            this.handleClickOutside(e);
         });
 
         // Profile checkboxes
@@ -1082,6 +1120,197 @@ class AWSADFSApp {
 
         // Retry the connection
         this.connectProfile(profile);
+    }
+
+        // Panel Management Methods
+    toggleLeftPanel() {
+        console.log('Toggle left panel called');
+        const leftPanel = document.getElementById('leftPanel');
+
+        if (leftPanel.classList.contains('hidden')) {
+            console.log('Showing left panel');
+            this.showLeftPanel();
+        } else {
+            console.log('Hiding left panel');
+            this.hideLeftPanel();
+        }
+    }
+
+        hideLeftPanel() {
+        const leftPanel = document.getElementById('leftPanel');
+        const showPanelBtn = document.getElementById('showPanelBtn');
+        const togglePanelBtn = document.getElementById('togglePanelBtn');
+
+        leftPanel.classList.add('hidden');
+        leftPanel.classList.remove('mobile-show');
+        showPanelBtn.classList.remove('d-none');
+        showPanelBtn.classList.add('show');
+
+        // Update toggle button icon
+        togglePanelBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        togglePanelBtn.title = 'Show Panel';
+
+        // Save panel state (but not on mobile)
+        if (!this.isMobile()) {
+            localStorage.setItem('leftPanelHidden', 'true');
+        }
+    }
+
+        showLeftPanel() {
+        const leftPanel = document.getElementById('leftPanel');
+        const showPanelBtn = document.getElementById('showPanelBtn');
+        const togglePanelBtn = document.getElementById('togglePanelBtn');
+
+        leftPanel.classList.remove('hidden');
+        if (this.isMobile()) {
+            leftPanel.classList.add('mobile-show');
+        }
+        showPanelBtn.classList.add('d-none');
+        showPanelBtn.classList.remove('show');
+
+        // Update toggle button icon
+        togglePanelBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        togglePanelBtn.title = 'Hide Panel';
+
+        // Save panel state (but not on mobile)
+        if (!this.isMobile()) {
+            localStorage.setItem('leftPanelHidden', 'false');
+        }
+    }
+
+    setupPanelResize() {
+        console.log('Setting up panel resize...');
+        const resizeHandle = document.getElementById('resizeHandle');
+        const leftPanel = document.getElementById('leftPanel');
+
+        if (!resizeHandle) {
+            console.error('Resize handle not found!');
+            return;
+        }
+        if (!leftPanel) {
+            console.error('Left panel not found!');
+            return;
+        }
+
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        resizeHandle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = leftPanel.offsetWidth;
+
+            resizeHandle.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+
+            const deltaX = e.clientX - startX;
+            const newWidth = startWidth + deltaX;
+            const minWidth = 200;
+            const maxWidth = Math.min(600, window.innerWidth * 0.5);
+
+            if (newWidth >= minWidth && newWidth <= maxWidth) {
+                leftPanel.style.width = newWidth + 'px';
+                leftPanel.style.flex = `0 0 ${newWidth}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                resizeHandle.classList.remove('dragging');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+
+                // Save panel width
+                localStorage.setItem('leftPanelWidth', leftPanel.style.width);
+            }
+        });
+
+        // Double-click to reset width
+        resizeHandle.addEventListener('dblclick', () => {
+            leftPanel.style.width = '280px';
+            leftPanel.style.flex = '0 0 280px';
+            localStorage.removeItem('leftPanelWidth');
+        });
+    }
+
+        // Load panel preferences on init
+    loadPanelPreferences() {
+        const leftPanel = document.getElementById('leftPanel');
+
+        // Don't apply desktop preferences on mobile
+        if (this.isMobile()) {
+            this.hideLeftPanel(); // Start hidden on mobile
+            return;
+        }
+
+        const isHidden = localStorage.getItem('leftPanelHidden') === 'true';
+        const savedWidth = localStorage.getItem('leftPanelWidth');
+
+        if (savedWidth) {
+            leftPanel.style.width = savedWidth;
+            leftPanel.style.flex = `0 0 ${savedWidth}`;
+        }
+
+        if (isHidden) {
+            this.hideLeftPanel();
+        }
+    }
+
+    // Helper method to detect mobile devices
+    isMobile() {
+        return window.innerWidth <= 768;
+    }
+
+    // Handle window resize for responsive behavior
+    handleWindowResize() {
+        const leftPanel = document.getElementById('leftPanel');
+
+        if (this.isMobile()) {
+            // On mobile, ensure panel follows mobile behavior
+            leftPanel.classList.remove('mobile-show');
+            if (!leftPanel.classList.contains('hidden')) {
+                leftPanel.classList.add('mobile-show');
+            }
+        } else {
+            // On desktop, remove mobile classes and apply desktop behavior
+            leftPanel.classList.remove('mobile-show');
+
+            // Restore desktop width if available
+            const savedWidth = localStorage.getItem('leftPanelWidth');
+            if (savedWidth) {
+                leftPanel.style.width = savedWidth;
+                leftPanel.style.flex = `0 0 ${savedWidth}`;
+            } else {
+                leftPanel.style.width = '280px';
+                leftPanel.style.flex = '0 0 280px';
+            }
+        }
+    }
+
+    // Handle click outside panel to close it on mobile
+    handleClickOutside(e) {
+        if (!this.isMobile()) return;
+
+        const leftPanel = document.getElementById('leftPanel');
+        const showPanelBtn = document.getElementById('showPanelBtn');
+        const togglePanelBtn = document.getElementById('togglePanelBtn');
+
+        // Check if panel is open and click is outside
+        if (!leftPanel.classList.contains('hidden') &&
+            !leftPanel.contains(e.target) &&
+            !showPanelBtn.contains(e.target) &&
+            !togglePanelBtn.contains(e.target)) {
+            this.hideLeftPanel();
+        }
     }
 }
 

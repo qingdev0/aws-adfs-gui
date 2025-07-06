@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel Test</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link href="/static/styles.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="container-fluid h-100">
+      <!-- Header -->
+      <header class="row bg-dark text-white py-2 align-items-center">
+        <div class="col-md-6">
+          <button
+            class="btn btn-outline-light btn-sm me-3 d-none"
+            id="showPanelBtn"
+            title="Show Profile Panel"
+          >
+            <i class="fas fa-chevron-right"></i>
+          </button>
+          <h4 class="mb-0 d-inline">
+            <i class="fas fa-cloud text-primary me-2"></i>
+            Panel Test
+          </h4>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <div class="row flex-fill">
+        <!-- Left Panel -->
+        <div class="bg-light border-end" id="leftPanel" style="padding: 1rem">
+          <!-- Panel Header with Toggle Button -->
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="text-primary mb-0">
+              <i class="fas fa-users me-2"></i>Test Panel
+            </h6>
+            <button
+              class="btn btn-outline-secondary btn-sm"
+              id="togglePanelBtn"
+              title="Hide Panel"
+            >
+              <i class="fas fa-chevron-left"></i>
+            </button>
+          </div>
+
+          <p>This is a test panel content. Try the toggle button above!</p>
+          <ul>
+            <li>Click the chevron to hide/show</li>
+            <li>Drag the resize handle on the right</li>
+            <li>Double-click resize handle to reset</li>
+          </ul>
+
+          <!-- Resize Handle -->
+          <div
+            class="resize-handle"
+            id="resizeHandle"
+            title="Drag to resize panel"
+          ></div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="d-flex flex-column" id="rightPanel">
+          <div class="p-4">
+            <h5>Main Content Area</h5>
+            <p>
+              This is the main content area. The left panel should be
+              collapsible and resizable.
+            </p>
+            <p>Check the browser console for debug logs.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      class PanelTest {
+        constructor() {
+          console.log("Panel test initializing...");
+          this.setupEventListeners();
+          this.loadPanelPreferences();
+          console.log("Panel test initialized");
+        }
+
+        setupEventListeners() {
+          const toggleBtn = document.getElementById("togglePanelBtn");
+          const showBtn = document.getElementById("showPanelBtn");
+
+          if (toggleBtn) {
+            console.log("Adding toggle button event listener");
+            toggleBtn.addEventListener("click", () => {
+              this.toggleLeftPanel();
+            });
+          } else {
+            console.error("Toggle button not found!");
+          }
+
+          if (showBtn) {
+            console.log("Adding show button event listener");
+            showBtn.addEventListener("click", () => {
+              this.showLeftPanel();
+            });
+          } else {
+            console.error("Show button not found!");
+          }
+
+          this.setupPanelResize();
+        }
+
+        toggleLeftPanel() {
+          console.log("Toggle left panel called");
+          const leftPanel = document.getElementById("leftPanel");
+
+          if (leftPanel.classList.contains("hidden")) {
+            console.log("Showing left panel");
+            this.showLeftPanel();
+          } else {
+            console.log("Hiding left panel");
+            this.hideLeftPanel();
+          }
+        }
+
+        hideLeftPanel() {
+          const leftPanel = document.getElementById("leftPanel");
+          const showPanelBtn = document.getElementById("showPanelBtn");
+          const togglePanelBtn = document.getElementById("togglePanelBtn");
+
+          leftPanel.classList.add("hidden");
+          showPanelBtn.classList.remove("d-none");
+
+          togglePanelBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+          togglePanelBtn.title = "Show Panel";
+
+          localStorage.setItem("leftPanelHidden", "true");
+        }
+
+        showLeftPanel() {
+          const leftPanel = document.getElementById("leftPanel");
+          const showPanelBtn = document.getElementById("showPanelBtn");
+          const togglePanelBtn = document.getElementById("togglePanelBtn");
+
+          leftPanel.classList.remove("hidden");
+          showPanelBtn.classList.add("d-none");
+
+          togglePanelBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+          togglePanelBtn.title = "Hide Panel";
+
+          localStorage.setItem("leftPanelHidden", "false");
+        }
+
+        setupPanelResize() {
+          console.log("Setting up panel resize...");
+          const resizeHandle = document.getElementById("resizeHandle");
+          const leftPanel = document.getElementById("leftPanel");
+
+          if (!resizeHandle) {
+            console.error("Resize handle not found!");
+            return;
+          }
+          if (!leftPanel) {
+            console.error("Left panel not found!");
+            return;
+          }
+
+          let isResizing = false;
+          let startX = 0;
+          let startWidth = 0;
+
+          resizeHandle.addEventListener("mousedown", (e) => {
+            console.log("Resize start");
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = leftPanel.offsetWidth;
+
+            resizeHandle.classList.add("dragging");
+            document.body.style.cursor = "col-resize";
+            document.body.style.userSelect = "none";
+
+            e.preventDefault();
+          });
+
+          document.addEventListener("mousemove", (e) => {
+            if (!isResizing) return;
+
+            const deltaX = e.clientX - startX;
+            const newWidth = startWidth + deltaX;
+            const minWidth = 200;
+            const maxWidth = Math.min(600, window.innerWidth * 0.5);
+
+            if (newWidth >= minWidth && newWidth <= maxWidth) {
+              leftPanel.style.width = newWidth + "px";
+              leftPanel.style.flex = `0 0 ${newWidth}px`;
+            }
+          });
+
+          document.addEventListener("mouseup", () => {
+            if (isResizing) {
+              console.log("Resize end");
+              isResizing = false;
+              resizeHandle.classList.remove("dragging");
+              document.body.style.cursor = "";
+              document.body.style.userSelect = "";
+
+              localStorage.setItem("leftPanelWidth", leftPanel.style.width);
+            }
+          });
+
+          resizeHandle.addEventListener("dblclick", () => {
+            console.log("Reset panel width");
+            leftPanel.style.width = "280px";
+            leftPanel.style.flex = "0 0 280px";
+            localStorage.removeItem("leftPanelWidth");
+          });
+        }
+
+        loadPanelPreferences() {
+          const leftPanel = document.getElementById("leftPanel");
+          const isHidden = localStorage.getItem("leftPanelHidden") === "true";
+          const savedWidth = localStorage.getItem("leftPanelWidth");
+
+          if (savedWidth) {
+            leftPanel.style.width = savedWidth;
+            leftPanel.style.flex = `0 0 ${savedWidth}`;
+          }
+
+          if (isHidden) {
+            this.hideLeftPanel();
+          }
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        window.panelTest = new PanelTest();
+      });
+    </script>
+  </body>
+</html>

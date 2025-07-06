@@ -13,6 +13,18 @@ html, body {
     flex-direction: column;
 }
 
+/* Main Content Row */
+.row.flex-fill {
+    display: flex !important;
+    flex: 1;
+    min-height: 0;
+    margin: 0 !important; /* Remove Bootstrap margins */
+}
+
+.row.flex-fill > * {
+    padding: 0 !important; /* Remove Bootstrap padding */
+}
+
 /* Header Styles */
 header {
     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
@@ -63,6 +75,78 @@ header {
 }
 
 /* Left Panel Styles */
+div#leftPanel {
+    position: relative;
+    transition: all 0.3s ease;
+    min-width: 200px;
+    max-width: 600px;
+    width: 280px;
+    flex: 0 0 280px;
+    overflow: visible;
+}
+
+div#leftPanel.hidden {
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    border: none !important;
+    flex: 0 0 0 !important;
+}
+
+div#rightPanel {
+    transition: all 0.3s ease;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Resize Handle */
+.resize-handle {
+    position: absolute;
+    top: 0;
+    right: -2px;
+    bottom: 0;
+    width: 4px;
+    background: #dee2e6;
+    cursor: col-resize;
+    z-index: 100;
+    transition: all 0.2s ease;
+    opacity: 0.7;
+}
+
+.resize-handle:hover {
+    background: #0d6efd;
+    width: 6px;
+    right: -3px;
+    opacity: 1;
+}
+
+.resize-handle.dragging {
+    background: #0d6efd;
+    width: 6px;
+    right: -3px;
+    opacity: 1;
+}
+
+/* Panel Toggle Buttons */
+#togglePanelBtn {
+    transition: all 0.2s ease;
+}
+
+#togglePanelBtn:hover {
+    transform: scale(1.1);
+}
+
+#showPanelBtn {
+    transition: all 0.3s ease;
+}
+
+#showPanelBtn.show {
+    display: inline-block !important;
+}
+
+/* Profile Items */
 .profile-item {
     padding: 8px 12px;
     border-radius: 6px;
@@ -302,23 +386,39 @@ header {
         padding: 0;
     }
 
-    .col-md-3 {
+    #leftPanel {
         position: fixed;
-        top: 0;
+        top: 60px; /* Adjust based on header height */
         left: -100%;
-        width: 80%;
-        height: 100%;
-        background: white;
+        width: 80% !important;
+        height: calc(100vh - 60px);
         z-index: 1050;
-        transition: left 0.3s ease;
+        background: white;
+        transition: left 0.3s ease !important;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        min-width: 250px !important;
     }
 
-    .col-md-3.show {
+    #leftPanel.mobile-show {
         left: 0;
     }
 
-    .col-md-9 {
+    #leftPanel.hidden {
+        left: -100% !important;
+    }
+
+    #rightPanel {
+        margin-left: 0;
         width: 100%;
+    }
+
+    .resize-handle {
+        display: none; /* Hide resize handle on mobile */
+    }
+
+    /* Mobile-specific toggle button styles */
+    #showPanelBtn {
+        display: inline-block !important;
     }
 }
 
