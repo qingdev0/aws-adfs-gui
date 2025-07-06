@@ -1,7 +1,9 @@
 """FastAPI web application for AWS ADFS GUI."""
 
+import asyncio
 import json
-from typing import List
+import os
+from typing import Dict, List, Set
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -34,13 +36,110 @@ app.add_middleware(
 )
 
 # Mount static files for the frontend
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+# WebSocket connection manager
+class ConnectionManager:
+    """Manages WebSocket connections and profile states."""
+
+    def __init__(self) -> None:
+        self.active_connections: List[WebSocket] = []
+        self.connected_profiles: Set[str] = set()
+        self.profile_connections: Dict[str, Set[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket) -> None:
+        """Accept a WebSocket connection."""
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket) -> None:
+        """Remove a WebSocket connection."""
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+        # Remove from profile connections
+        for connections in self.profile_connections.values():
+            if websocket in connections:
+                connections.remove(websocket)
+
+    async def send_personal_message(self, message: dict, websocket: WebSocket) -> None:
+        """Send a message to a specific WebSocket."""
+        try:
+            await websocket.send_text(json.dumps(message))
+        except Exception:
+            # Connection might be closed
+            self.disconnect(websocket)
+
+    async def broadcast(self, message: dict) -> None:
+        """Broadcast a message to all connected WebSockets."""
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(json.dumps(message))
+            except Exception:
+                # Connection might be closed
+                self.disconnect(connection)
+
+    async def connect_profile(self, profile: str, websocket: WebSocket) -> None:
+        """Connect a profile and notify the client."""
+        if profile not in self.profile_connections:
+            self.profile_connections[profile] = set()
+
+        self.profile_connections[profile].add(websocket)
+
+        # Simulate connection process
+        await self.send_personal_message(
+            {"type": "connection_status", "profile": profile, "status": "connecting"},
+            websocket,
+        )
+
+        # Simulate connection delay
+        await asyncio.sleep(1)
+
+        # Check if profile is valid (basic validation)
+        if profile in config.get_profile_names():
+            self.connected_profiles.add(profile)
+            await self.send_personal_message(
+                {
+                    "type": "connection_status",
+                    "profile": profile,
+                    "status": "connected",
+                },
+                websocket,
+            )
+        else:
+            await self.send_personal_message(
+                {
+                    "type": "connection_status",
+                    "profile": profile,
+                    "status": "disconnected",
+                },
+                websocket,
+            )
+
+    async def disconnect_profile(self, profile: str, websocket: WebSocket) -> None:
+        """Disconnect a profile and notify the client."""
+        if profile in self.profile_connections:
+            self.profile_connections[profile].discard(websocket)
+            if not self.profile_connections[profile]:
+                del self.profile_connections[profile]
+                self.connected_profiles.discard(profile)
+
+        await self.send_personal_message(
+            {"type": "connection_status", "profile": profile, "status": "disconnected"},
+            websocket,
+        )
+
+
+manager = ConnectionManager()
 
 
 @app.get("/", response_class=HTMLResponse)  # type: ignore[misc]
 async def get_index() -> HTMLResponse:
     """Serve the main HTML page."""
-    return FileResponse("static/index.html")
+    html_path = os.path.join(static_dir, "index.html")
+    return FileResponse(html_path)
 
 
 @app.get("/api/profiles")  # type: ignore[misc]
@@ -84,29 +183,126 @@ async def clear_command_history() -> dict:
     return {"message": "History cleared successfully"}
 
 
-@app.websocket("/ws/execute")  # type: ignore[misc]
-async def websocket_execute(websocket: WebSocket) -> None:
-    """WebSocket endpoint for real-time command execution."""
-    await websocket.accept()
+@app.websocket("/ws")  # type: ignore[misc]
+async def websocket_endpoint(websocket: WebSocket) -> None:
+    """Enhanced WebSocket endpoint for real-time communication."""
+    await manager.connect(websocket)
 
     try:
         while True:
-            # Receive command request
+            # Receive message
             data = await websocket.receive_text()
-            request_data = json.loads(data)
-            request = CommandRequest(**request_data)
+            message = json.loads(data)
 
-            # Execute command and stream results
-            async for result in executor.execute_command(request):
-                await websocket.send_text(result.model_dump_json())
+            message_type = message.get("type")
 
-            # Send completion signal
-            await websocket.send_text(json.dumps({"type": "complete"}))
+            if message_type == "connect_profile":
+                profile = message.get("profile")
+                if profile:
+                    await manager.connect_profile(profile, websocket)
+
+            elif message_type == "disconnect_profile":
+                profile = message.get("profile")
+                if profile:
+                    await manager.disconnect_profile(profile, websocket)
+
+            elif message_type == "execute_command":
+                profile = message.get("profile")
+                command = message.get("command")
+
+                if profile and command:
+                    # Create command request
+                    request = CommandRequest(
+                        command=command, profiles=[profile], timeout=300
+                    )
+
+                    # Send command start notification
+                    await manager.send_personal_message(
+                        {
+                            "type": "command_output",
+                            "profile": profile,
+                            "output": f"$ {command}",
+                            "is_error": False,
+                        },
+                        websocket,
+                    )
+
+                    # Execute command and stream results
+                    try:
+                        async for result in executor.execute_command(request):
+                            if result.profile == profile:
+                                # Send output
+                                if result.output:
+                                    await manager.send_personal_message(
+                                        {
+                                            "type": "command_output",
+                                            "profile": profile,
+                                            "output": result.output,
+                                            "is_error": False,
+                                        },
+                                        websocket,
+                                    )
+
+                                # Send error if any
+                                if result.error:
+                                    await manager.send_personal_message(
+                                        {
+                                            "type": "command_output",
+                                            "profile": profile,
+                                            "output": result.error,
+                                            "is_error": True,
+                                        },
+                                        websocket,
+                                    )
+
+                                # Send completion
+                                await manager.send_personal_message(
+                                    {
+                                        "type": "command_complete",
+                                        "profile": profile,
+                                        "success": result.success,
+                                        "duration": result.duration,
+                                    },
+                                    websocket,
+                                )
+
+                    except Exception as e:
+                        await manager.send_personal_message(
+                            {
+                                "type": "command_output",
+                                "profile": profile,
+                                "output": f"Error: {str(e)}",
+                                "is_error": True,
+                            },
+                            websocket,
+                        )
+
+                        await manager.send_personal_message(
+                            {
+                                "type": "command_complete",
+                                "profile": profile,
+                                "success": False,
+                                "duration": 0,
+                            },
+                            websocket,
+                        )
+
+            else:
+                await manager.send_personal_message(
+                    {
+                        "type": "error",
+                        "message": f"Unknown message type: {message_type}",
+                    },
+                    websocket,
+                )
 
     except WebSocketDisconnect:
-        pass
+        manager.disconnect(websocket)
     except Exception as e:
-        await websocket.send_text(json.dumps({"type": "error", "error": str(e)}))
+        await manager.send_personal_message(
+            {"type": "error", "message": str(e)}, websocket
+        )
+        manager.disconnect(websocket)
 
 
 @app.post("/api/export")  # type: ignore[misc]

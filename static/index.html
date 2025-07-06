@@ -9,202 +9,379 @@
       rel="stylesheet"
     />
     <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
-    <link href="styles.css" rel="stylesheet" />
+    <link href="/static/styles.css" rel="stylesheet" />
   </head>
   <body>
-    <div class="container-fluid">
+    <div class="container-fluid h-100">
       <!-- Header -->
-      <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-          <span class="navbar-brand">
-            <i class="bi bi-cloud-aws"></i> AWS ADFS GUI
+      <header class="row bg-dark text-white py-2 align-items-center">
+        <div class="col-md-6">
+          <h4 class="mb-0">
+            <i class="fas fa-cloud text-primary me-2"></i>
+            AWS ADFS GUI
+          </h4>
+        </div>
+        <div class="col-md-6 text-end">
+          <button class="btn btn-outline-light btn-sm me-2" id="settingsBtn">
+            <i class="fas fa-cog"></i> Settings
+          </button>
+          <span class="badge bg-success">
+            <i class="fas fa-circle pulse" id="statusIndicator"></i>
+            Status: <span id="statusText">Ready</span>
           </span>
-          <div class="navbar-nav ms-auto">
-            <span class="navbar-text" id="status-indicator">
-              <i class="bi bi-circle-fill text-success"></i> Ready
+        </div>
+      </header>
+
+      <!-- Command Bar -->
+      <div class="row bg-light py-3 border-bottom">
+        <div class="col-md-12">
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fas fa-terminal"></i>
             </span>
+            <input
+              type="text"
+              class="form-control"
+              id="commandInput"
+              placeholder="Enter AWS command (e.g., aws s3 ls)"
+              value="aws s3 ls"
+            />
+            <button class="btn btn-primary" id="executeBtn">
+              <i class="fas fa-play me-1"></i> Execute
+            </button>
+            <button class="btn btn-outline-secondary" id="historyBtn">
+              <i class="fas fa-history me-1"></i> History
+            </button>
           </div>
         </div>
-      </nav>
+      </div>
 
-      <div class="row g-0" style="height: calc(100vh - 56px)">
-        <!-- Left Panel - Profile Selection -->
-        <div class="col-md-3 border-end">
-          <div class="p-3">
-            <h5><i class="bi bi-list-check"></i> AWS Profiles</h5>
-
-            <!-- Profile Groups -->
-            <div id="profile-groups">
-              <!-- Groups will be populated by JavaScript -->
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="mt-3">
-              <h6>Quick Actions</h6>
-              <div class="d-grid gap-2">
-                <button
-                  class="btn btn-outline-primary btn-sm"
-                  onclick="selectGroup('dev')"
-                >
-                  Select Dev
-                </button>
-                <button
-                  class="btn btn-outline-warning btn-sm"
-                  onclick="selectGroup('np')"
-                >
-                  Select Non-Prod
-                </button>
-                <button
-                  class="btn btn-outline-danger btn-sm"
-                  onclick="selectGroup('pd')"
-                >
-                  Select Production
-                </button>
-                <button
-                  class="btn btn-outline-secondary btn-sm"
-                  onclick="selectAll()"
-                >
-                  Select All
-                </button>
-                <button
-                  class="btn btn-outline-secondary btn-sm"
-                  onclick="clearSelection()"
-                >
-                  Clear Selection
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Center Panel - Command Input -->
-        <div class="col-md-4 border-end">
-          <div class="p-3">
-            <h5><i class="bi bi-terminal"></i> Command Input</h5>
-
-            <!-- Command Input -->
+      <!-- Main Content -->
+      <div class="row flex-fill">
+        <!-- Left Panel - Profile Management -->
+        <div class="col-md-3 bg-light p-3 border-end">
+          <!-- Dev Profiles Section -->
+          <div class="mb-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-laptop-code me-2"></i>
+              Dev Profiles
+            </h6>
             <div class="mb-3">
-              <label for="commandInput" class="form-label">Command</label>
-              <div class="input-group">
-                <input
-                  type="text"
-                  class="form-control"
-                  id="commandInput"
-                  placeholder="Enter AWS command (e.g., aws s3 ls)"
-                />
-                <button class="btn btn-primary" onclick="executeCommand()">
-                  <i class="bi bi-play-fill"></i> Execute
-                </button>
-              </div>
-            </div>
-
-            <!-- Command History -->
-            <div class="mb-3">
-              <div class="d-flex justify-content-between align-items-center">
-                <label class="form-label">Command History</label>
-                <button
-                  class="btn btn-outline-secondary btn-sm"
-                  onclick="clearHistory()"
-                >
-                  <i class="bi bi-trash"></i> Clear
-                </button>
-              </div>
-              <div
-                class="list-group"
-                id="commandHistory"
-                style="max-height: 300px; overflow-y: auto"
+              <button
+                class="btn btn-outline-primary w-100 mb-2"
+                id="selectDevBtn"
               >
-                <!-- History items will be populated by JavaScript -->
+                <i class="fas fa-rocket me-2"></i>
+                Select Dev
+              </button>
+            </div>
+            <div class="profile-list">
+              <div class="profile-item mb-2" data-profile="aws-dev-eu">
+                <div class="d-flex align-items-center">
+                  <div class="status-indicator me-2">
+                    <i
+                      class="fas fa-circle text-secondary"
+                      id="status-aws-dev-eu"
+                    ></i>
+                  </div>
+                  <span class="profile-name">aws-dev-eu</span>
+                  <span class="badge bg-secondary ms-auto" id="badge-aws-dev-eu"
+                    >Disconnected</span
+                  >
+                </div>
+              </div>
+              <div class="profile-item mb-2" data-profile="aws-dev-sg">
+                <div class="d-flex align-items-center">
+                  <div class="status-indicator me-2">
+                    <i
+                      class="fas fa-circle text-secondary"
+                      id="status-aws-dev-sg"
+                    ></i>
+                  </div>
+                  <span class="profile-name">aws-dev-sg</span>
+                  <span class="badge bg-secondary ms-auto" id="badge-aws-dev-sg"
+                    >Disconnected</span
+                  >
+                </div>
               </div>
             </div>
+          </div>
 
-            <!-- Settings -->
-            <div class="mb-3">
-              <h6>Settings</h6>
-              <div class="row">
-                <div class="col-6">
-                  <label for="timeoutInput" class="form-label"
-                    >Timeout (seconds)</label
-                  >
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="timeoutInput"
-                    value="300"
-                    min="30"
-                    max="3600"
-                  />
-                </div>
-                <div class="col-6">
-                  <label class="form-label">Export Format</label>
-                  <select class="form-select" id="exportFormat">
-                    <option value="json">JSON</option>
-                    <option value="csv">CSV</option>
-                    <option value="txt">Text</option>
-                  </select>
-                </div>
+          <!-- Other Profiles Section -->
+          <div class="mb-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-server me-2"></i>
+              Other Profiles
+            </h6>
+            <div class="profile-list">
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input profile-checkbox"
+                  type="checkbox"
+                  id="kds-ets-np"
+                  value="kds-ets-np"
+                />
+                <label
+                  class="form-check-label d-flex align-items-center"
+                  for="kds-ets-np"
+                >
+                  <span class="me-2">kds-ets-np</span>
+                  <i
+                    class="fas fa-circle text-secondary ms-auto"
+                    id="status-kds-ets-np"
+                  ></i>
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input profile-checkbox"
+                  type="checkbox"
+                  id="kds-gps-np"
+                  value="kds-gps-np"
+                />
+                <label
+                  class="form-check-label d-flex align-items-center"
+                  for="kds-gps-np"
+                >
+                  <span class="me-2">kds-gps-np</span>
+                  <i
+                    class="fas fa-circle text-secondary ms-auto"
+                    id="status-kds-gps-np"
+                  ></i>
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input profile-checkbox"
+                  type="checkbox"
+                  id="kds-iss-np"
+                  value="kds-iss-np"
+                />
+                <label
+                  class="form-check-label d-flex align-items-center"
+                  for="kds-iss-np"
+                >
+                  <span class="me-2">kds-iss-np</span>
+                  <i
+                    class="fas fa-circle text-secondary ms-auto"
+                    id="status-kds-iss-np"
+                  ></i>
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input profile-checkbox"
+                  type="checkbox"
+                  id="kds-ets-pd"
+                  value="kds-ets-pd"
+                />
+                <label
+                  class="form-check-label d-flex align-items-center"
+                  for="kds-ets-pd"
+                >
+                  <span class="me-2">kds-ets-pd</span>
+                  <i
+                    class="fas fa-circle text-secondary ms-auto"
+                    id="status-kds-ets-pd"
+                  ></i>
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input profile-checkbox"
+                  type="checkbox"
+                  id="kds-gps-pd"
+                  value="kds-gps-pd"
+                />
+                <label
+                  class="form-check-label d-flex align-items-center"
+                  for="kds-gps-pd"
+                >
+                  <span class="me-2">kds-gps-pd</span>
+                  <i
+                    class="fas fa-circle text-secondary ms-auto"
+                    id="status-kds-gps-pd"
+                  ></i>
+                </label>
+              </div>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input profile-checkbox"
+                  type="checkbox"
+                  id="kds-iss-pd"
+                  value="kds-iss-pd"
+                />
+                <label
+                  class="form-check-label d-flex align-items-center"
+                  for="kds-iss-pd"
+                >
+                  <span class="me-2">kds-iss-pd</span>
+                  <i
+                    class="fas fa-circle text-secondary ms-auto"
+                    id="status-kds-iss-pd"
+                  ></i>
+                </label>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Right Panel - Results -->
-        <div class="col-md-5">
-          <div class="p-3">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5><i class="bi bi-list-ul"></i> Results</h5>
-              <div>
+        <!-- Right Panel - Tabbed Results -->
+        <div class="col-md-9 d-flex flex-column">
+          <!-- Tab Navigation -->
+          <div class="border-bottom">
+            <ul class="nav nav-tabs" id="profileTabs" role="tablist">
+              <li class="nav-item" role="presentation">
                 <button
-                  class="btn btn-outline-success btn-sm"
-                  onclick="exportResults()"
+                  class="nav-link active"
+                  id="welcome-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#welcome"
+                  type="button"
+                  role="tab"
                 >
-                  <i class="bi bi-download"></i> Export
+                  <i class="fas fa-home me-1"></i>
+                  Welcome
                 </button>
-                <button
-                  class="btn btn-outline-secondary btn-sm"
-                  onclick="clearResults()"
-                >
-                  <i class="bi bi-trash"></i> Clear
-                </button>
-              </div>
-            </div>
-
-            <!-- Results Tabs -->
-            <ul class="nav nav-tabs" id="resultsTabs" role="tablist">
-              <!-- Tabs will be populated by JavaScript -->
+              </li>
             </ul>
+          </div>
 
-            <div class="tab-content" id="resultsContent">
-              <!-- Tab content will be populated by JavaScript -->
+          <!-- Tab Content -->
+          <div class="tab-content flex-fill" id="profileTabsContent">
+            <div
+              class="tab-pane fade show active p-4"
+              id="welcome"
+              role="tabpanel"
+            >
+              <div class="text-center">
+                <i class="fas fa-cloud fa-3x text-primary mb-3"></i>
+                <h5>Welcome to AWS ADFS GUI</h5>
+                <p class="text-muted">
+                  Select profiles from the left panel to get started.<br />
+                  Use "Select Dev" for quick development environment setup.
+                </p>
+                <div class="mt-4">
+                  <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Connected profiles will appear as tabs above
+                  </small>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Loading Modal -->
-    <div
-      class="modal fade"
-      id="loadingModal"
-      tabindex="-1"
-      data-bs-backdrop="static"
-    >
-      <div class="modal-dialog modal-sm">
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
         <div class="modal-content">
-          <div class="modal-body text-center">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Loading...</span>
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-cog me-2"></i>
+              Settings
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-md-6">
+                <h6>Connection Settings</h6>
+                <div class="mb-3">
+                  <label class="form-label">Connection Timeout (seconds)</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="timeoutSetting"
+                    value="30"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Max Retries</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="retriesSetting"
+                    value="3"
+                  />
+                </div>
+              </div>
+              <div class="col-md-6">
+                <h6>Export Settings</h6>
+                <div class="mb-3">
+                  <label class="form-label">Default Export Format</label>
+                  <select class="form-select" id="exportFormat">
+                    <option value="json">JSON</option>
+                    <option value="csv">CSV</option>
+                    <option value="text">Text</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="includeTimestamps"
+                      checked
+                    />
+                    <label class="form-check-label" for="includeTimestamps">
+                      Include timestamps in export
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p class="mt-2">Executing commands...</p>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancel
+            </button>
+            <button type="button" class="btn btn-primary" id="saveSettings">
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Command History Modal -->
+    <div class="modal fade" id="historyModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-history me-2"></i>
+              Command History
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="list-group" id="historyList">
+              <!-- History items will be populated here -->
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="app.js"></script>
+    <script src="/static/app.js"></script>
   </body>
 </html>
