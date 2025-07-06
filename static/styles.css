@@ -80,25 +80,17 @@ div#leftPanel {
     transition: all 0.3s ease;
     min-width: 200px;
     max-width: 600px;
-    width: 320px;
-    flex: 0 0 320px;
     overflow: visible;
 }
 
 div#leftPanel.hidden {
-    width: 0 !important;
-    min-width: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: hidden !important;
-    border: none !important;
-    flex: 0 0 0 !important;
+    display: none !important;
 }
 
 div#rightPanel {
     transition: all 0.3s ease;
-    flex: 1 1 auto;
     min-width: 0;
+    min-height: 400px;
 }
 
 /* Resize Handle */
@@ -217,10 +209,13 @@ div#rightPanel {
     background-color: #f8f9fa;
 }
 
-/* Tab Styles */
+/* Tab Styles - Positioned on Right Side */
 .nav-tabs {
     border-bottom: 2px solid #dee2e6;
     background-color: #f8f9fa;
+    padding-left: 0;
+    margin-bottom: 0;
+    border-radius: 0;
 }
 
 .nav-tabs .nav-link {
@@ -230,11 +225,14 @@ div#rightPanel {
     font-weight: 500;
     transition: all 0.3s ease;
     position: relative;
+    padding: 12px 16px;
+    margin-right: 2px;
 }
 
 .nav-tabs .nav-link:hover {
     color: #0d6efd;
     background-color: #e9ecef;
+    border-color: transparent;
 }
 
 .nav-tabs .nav-link.active {
@@ -242,6 +240,9 @@ div#rightPanel {
     background-color: white;
     border-bottom: 3px solid #0d6efd;
     font-weight: 600;
+    border-top: 1px solid #dee2e6;
+    border-left: 1px solid #dee2e6;
+    border-right: 1px solid #dee2e6;
 }
 
 .nav-tabs .nav-link.active::after {
@@ -254,19 +255,36 @@ div#rightPanel {
     background: linear-gradient(90deg, #0d6efd, #0056b3);
 }
 
-/* Tab Content */
+/* Tab Content - Right Side Panel */
 .tab-content {
     background-color: white;
     min-height: 400px;
+    border-left: 1px solid #dee2e6;
+    border-right: 1px solid #dee2e6;
+    border-bottom: 1px solid #dee2e6;
+    flex-grow: 1;
 }
 
 .tab-pane {
     animation: fadeIn 0.3s ease-in-out;
+    padding: 1rem;
+    height: 100%;
 }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* Right Panel Container */
+#rightPanel {
+    border-left: 2px solid #0d6efd;
+    box-shadow: -2px 0 10px rgba(13, 110, 253, 0.1);
+}
+
+/* Empty state in right panel */
+#rightPanel .text-center {
+    padding: 2rem;
 }
 
 /* Command Output */
@@ -478,10 +496,12 @@ div#rightPanel {
 
     #leftPanel.mobile-show {
         left: 0;
+        display: block !important;
     }
 
     #leftPanel.hidden {
         left: -100% !important;
+        display: none !important;
     }
 
     #rightPanel {
