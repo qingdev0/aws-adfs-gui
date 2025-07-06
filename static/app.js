@@ -284,7 +284,7 @@ class AWSADFSApp {
             // Disconnect dev profiles
             this.devProfilesSelected = false;
             selectDevBtn.classList.remove('active');
-            selectDevBtn.innerHTML = '<i class="fas fa-rocket me-2"></i>Select Dev';
+            selectDevBtn.innerHTML = '<i class="fas fa-rocket me-2"></i>Connect All';
 
             devProfiles.forEach(profile => {
                 this.disconnectProfile(profile);
@@ -293,7 +293,7 @@ class AWSADFSApp {
             // Connect dev profiles
             this.devProfilesSelected = true;
             selectDevBtn.classList.add('active');
-            selectDevBtn.innerHTML = '<i class="fas fa-check me-2"></i>Dev Selected';
+            selectDevBtn.innerHTML = '<i class="fas fa-check me-2"></i>All Connected';
 
             devProfiles.forEach(profile => {
                 this.connectProfile(profile);
@@ -310,22 +310,22 @@ class AWSADFSApp {
             this.connectedProfiles.has(profile)
         );
 
-        // Update the Select Dev button state
+        // Update the Connect All button state
         if (connectedDevProfiles.length === devProfiles.length) {
             // All dev profiles are connected
             this.devProfilesSelected = true;
             selectDevBtn.classList.add('active');
-            selectDevBtn.innerHTML = '<i class="fas fa-check me-2"></i>Dev Selected';
+            selectDevBtn.innerHTML = '<i class="fas fa-check me-2"></i>All Connected';
         } else if (connectedDevProfiles.length === 0) {
             // No dev profiles are connected
             this.devProfilesSelected = false;
             selectDevBtn.classList.remove('active');
-            selectDevBtn.innerHTML = '<i class="fas fa-rocket me-2"></i>Select Dev';
+            selectDevBtn.innerHTML = '<i class="fas fa-rocket me-2"></i>Connect All';
         } else {
             // Some dev profiles are connected
             this.devProfilesSelected = false;
             selectDevBtn.classList.remove('active');
-            selectDevBtn.innerHTML = `<i class="fas fa-rocket me-2"></i>Select Dev (${connectedDevProfiles.length}/${devProfiles.length})`;
+            selectDevBtn.innerHTML = `<i class="fas fa-rocket me-2"></i>Connect All (${connectedDevProfiles.length}/${devProfiles.length})`;
         }
     }
 
@@ -337,7 +337,7 @@ class AWSADFSApp {
             // Disconnect non-prod profiles
             this.npProfilesSelected = false;
             selectNpBtn.classList.remove('active');
-            selectNpBtn.innerHTML = '<i class="fas fa-vial me-2"></i>Select Non-Prod';
+            selectNpBtn.innerHTML = '<i class="fas fa-vial me-2"></i>Connect All';
 
             npProfiles.forEach(profile => {
                 this.disconnectProfile(profile);
@@ -346,7 +346,7 @@ class AWSADFSApp {
             // Connect non-prod profiles
             this.npProfilesSelected = true;
             selectNpBtn.classList.add('active');
-            selectNpBtn.innerHTML = '<i class="fas fa-check me-2"></i>Non-Prod Selected';
+            selectNpBtn.innerHTML = '<i class="fas fa-check me-2"></i>All Connected';
 
             npProfiles.forEach(profile => {
                 this.connectProfile(profile);
@@ -363,22 +363,22 @@ class AWSADFSApp {
             this.connectedProfiles.has(profile)
         );
 
-        // Update the Select Non-Prod button state
+        // Update the Connect All button state
         if (connectedNpProfiles.length === npProfiles.length) {
             // All non-prod profiles are connected
             this.npProfilesSelected = true;
             selectNpBtn.classList.add('active');
-            selectNpBtn.innerHTML = '<i class="fas fa-check me-2"></i>Non-Prod Selected';
+            selectNpBtn.innerHTML = '<i class="fas fa-check me-2"></i>All Connected';
         } else if (connectedNpProfiles.length === 0) {
             // No non-prod profiles are connected
             this.npProfilesSelected = false;
             selectNpBtn.classList.remove('active');
-            selectNpBtn.innerHTML = '<i class="fas fa-vial me-2"></i>Select Non-Prod';
+            selectNpBtn.innerHTML = '<i class="fas fa-vial me-2"></i>Connect All';
         } else {
             // Some non-prod profiles are connected
             this.npProfilesSelected = false;
             selectNpBtn.classList.remove('active');
-            selectNpBtn.innerHTML = `<i class="fas fa-vial me-2"></i>Select Non-Prod (${connectedNpProfiles.length}/${npProfiles.length})`;
+            selectNpBtn.innerHTML = `<i class="fas fa-vial me-2"></i>Connect All (${connectedNpProfiles.length}/${npProfiles.length})`;
         }
     }
 
@@ -390,7 +390,7 @@ class AWSADFSApp {
             // Disconnect production profiles
             this.pdProfilesSelected = false;
             selectPdBtn.classList.remove('active');
-            selectPdBtn.innerHTML = '<i class="fas fa-lock me-2"></i>Select Production';
+            selectPdBtn.innerHTML = '<i class="fas fa-lock me-2"></i>Connect All';
 
             pdProfiles.forEach(profile => {
                 this.disconnectProfile(profile);
@@ -399,7 +399,7 @@ class AWSADFSApp {
             // Connect production profiles
             this.pdProfilesSelected = true;
             selectPdBtn.classList.add('active');
-            selectPdBtn.innerHTML = '<i class="fas fa-check me-2"></i>Production Selected';
+            selectPdBtn.innerHTML = '<i class="fas fa-check me-2"></i>All Connected';
 
             pdProfiles.forEach(profile => {
                 this.connectProfile(profile);
@@ -416,22 +416,22 @@ class AWSADFSApp {
             this.connectedProfiles.has(profile)
         );
 
-        // Update the Select Production button state
+        // Update the Connect All button state
         if (connectedPdProfiles.length === pdProfiles.length) {
             // All production profiles are connected
             this.pdProfilesSelected = true;
             selectPdBtn.classList.add('active');
-            selectPdBtn.innerHTML = '<i class="fas fa-check me-2"></i>Production Selected';
+            selectPdBtn.innerHTML = '<i class="fas fa-check me-2"></i>All Connected';
         } else if (connectedPdProfiles.length === 0) {
             // No production profiles are connected
             this.pdProfilesSelected = false;
             selectPdBtn.classList.remove('active');
-            selectPdBtn.innerHTML = '<i class="fas fa-lock me-2"></i>Select Production';
+            selectPdBtn.innerHTML = '<i class="fas fa-lock me-2"></i>Connect All';
         } else {
             // Some production profiles are connected
             this.pdProfilesSelected = false;
             selectPdBtn.classList.remove('active');
-            selectPdBtn.innerHTML = `<i class="fas fa-lock me-2"></i>Select Production (${connectedPdProfiles.length}/${pdProfiles.length})`;
+            selectPdBtn.innerHTML = `<i class="fas fa-lock me-2"></i>Connect All (${connectedPdProfiles.length}/${pdProfiles.length})`;
         }
     }
 
