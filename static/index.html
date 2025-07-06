@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AWS ADFS GUI</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <link href="styles.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="container-fluid">
+      <!-- Header -->
+      <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+          <span class="navbar-brand">
+            <i class="bi bi-cloud-aws"></i> AWS ADFS GUI
+          </span>
+          <div class="navbar-nav ms-auto">
+            <span class="navbar-text" id="status-indicator">
+              <i class="bi bi-circle-fill text-success"></i> Ready
+            </span>
+          </div>
+        </div>
+      </nav>
+
+      <div class="row g-0" style="height: calc(100vh - 56px)">
+        <!-- Left Panel - Profile Selection -->
+        <div class="col-md-3 border-end">
+          <div class="p-3">
+            <h5><i class="bi bi-list-check"></i> AWS Profiles</h5>
+
+            <!-- Profile Groups -->
+            <div id="profile-groups">
+              <!-- Groups will be populated by JavaScript -->
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="mt-3">
+              <h6>Quick Actions</h6>
+              <div class="d-grid gap-2">
+                <button
+                  class="btn btn-outline-primary btn-sm"
+                  onclick="selectGroup('dev')"
+                >
+                  Select Dev
+                </button>
+                <button
+                  class="btn btn-outline-warning btn-sm"
+                  onclick="selectGroup('np')"
+                >
+                  Select Non-Prod
+                </button>
+                <button
+                  class="btn btn-outline-danger btn-sm"
+                  onclick="selectGroup('pd')"
+                >
+                  Select Production
+                </button>
+                <button
+                  class="btn btn-outline-secondary btn-sm"
+                  onclick="selectAll()"
+                >
+                  Select All
+                </button>
+                <button
+                  class="btn btn-outline-secondary btn-sm"
+                  onclick="clearSelection()"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center Panel - Command Input -->
+        <div class="col-md-4 border-end">
+          <div class="p-3">
+            <h5><i class="bi bi-terminal"></i> Command Input</h5>
+
+            <!-- Command Input -->
+            <div class="mb-3">
+              <label for="commandInput" class="form-label">Command</label>
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="commandInput"
+                  placeholder="Enter AWS command (e.g., aws s3 ls)"
+                />
+                <button class="btn btn-primary" onclick="executeCommand()">
+                  <i class="bi bi-play-fill"></i> Execute
+                </button>
+              </div>
+            </div>
+
+            <!-- Command History -->
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <label class="form-label">Command History</label>
+                <button
+                  class="btn btn-outline-secondary btn-sm"
+                  onclick="clearHistory()"
+                >
+                  <i class="bi bi-trash"></i> Clear
+                </button>
+              </div>
+              <div
+                class="list-group"
+                id="commandHistory"
+                style="max-height: 300px; overflow-y: auto"
+              >
+                <!-- History items will be populated by JavaScript -->
+              </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="mb-3">
+              <h6>Settings</h6>
+              <div class="row">
+                <div class="col-6">
+                  <label for="timeoutInput" class="form-label"
+                    >Timeout (seconds)</label
+                  >
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="timeoutInput"
+                    value="300"
+                    min="30"
+                    max="3600"
+                  />
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Export Format</label>
+                  <select class="form-select" id="exportFormat">
+                    <option value="json">JSON</option>
+                    <option value="csv">CSV</option>
+                    <option value="txt">Text</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel - Results -->
+        <div class="col-md-5">
+          <div class="p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5><i class="bi bi-list-ul"></i> Results</h5>
+              <div>
+                <button
+                  class="btn btn-outline-success btn-sm"
+                  onclick="exportResults()"
+                >
+                  <i class="bi bi-download"></i> Export
+                </button>
+                <button
+                  class="btn btn-outline-secondary btn-sm"
+                  onclick="clearResults()"
+                >
+                  <i class="bi bi-trash"></i> Clear
+                </button>
+              </div>
+            </div>
+
+            <!-- Results Tabs -->
+            <ul class="nav nav-tabs" id="resultsTabs" role="tablist">
+              <!-- Tabs will be populated by JavaScript -->
+            </ul>
+
+            <div class="tab-content" id="resultsContent">
+              <!-- Tab content will be populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div
+      class="modal fade"
+      id="loadingModal"
+      tabindex="-1"
+      data-bs-backdrop="static"
+    >
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+          <div class="modal-body text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Executing commands...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
