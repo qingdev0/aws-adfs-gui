@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "charliermarsh.ruff",
+    "streetsidesoftware.code-spell-checker",
+    "ms-python.python",
+    "ms-python.mypy-type-checker",
+    "tamasfe.even-better-toml",
+    "ms-python.black-formatter",
+    "ms-vscode.test-adapter-converter",
+    "littlefoxteam.vscode-python-test-adapter",
+    "redhat.vscode-yaml"
+  ]
+}

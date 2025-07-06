@@ -181,7 +181,7 @@ ehthumbs.db
 Desktop.ini
 
 # IDE
-.vscode/
+# .vscode/  # Allow workspace settings to be shared
 .idea/
 *.swp
 *.swo
