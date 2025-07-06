@@ -34,6 +34,7 @@ class AWSADFSApp {
         this.setupEventListeners();
         this.loadSettings();
         this.setupPanelFunctionality();
+        this.setupWelcomePage();
 
         // Validate credentials on startup
         this.validateCredentialsOnStartup();
@@ -60,6 +61,11 @@ class AWSADFSApp {
         // History button
         document.getElementById('historyBtn').addEventListener('click', () => {
             this.showHistory();
+        });
+
+        // Help button
+        document.getElementById('helpBtn').addEventListener('click', () => {
+            this.showWelcome();
         });
 
                 // Save settings
@@ -1534,6 +1540,154 @@ class AWSADFSApp {
         });
 
         this.showAlert(`Refreshing ${profilesToRefresh.length} profiles...`, 'info');
+    }
+
+    // Welcome Page Functionality
+    setupWelcomePage() {
+        // Add event listeners for welcome page elements
+        this.setupWelcomeEventListeners();
+
+        // Check if welcome should be shown on startup
+        this.checkWelcomeDisplay();
+    }
+
+    setupWelcomeEventListeners() {
+        // Close button
+        const closeBtn = document.getElementById('welcome-close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeWelcome();
+            });
+        }
+
+        // Got it button
+        const gotItBtn = document.getElementById('welcome-got-it-btn');
+        if (gotItBtn) {
+            gotItBtn.addEventListener('click', () => {
+                this.closeWelcome();
+            });
+        }
+
+        // Show welcome again button
+        const showAgainBtn = document.getElementById('show-welcome-btn');
+        if (showAgainBtn) {
+            showAgainBtn.addEventListener('click', () => {
+                this.showWelcome();
+            });
+        }
+
+        // ESC key to close modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const welcomeModal = document.getElementById('welcome-modal');
+                if (welcomeModal && welcomeModal.classList.contains('show')) {
+                    this.closeWelcome();
+                }
+            }
+        });
+
+        // Click outside to close modal
+        const welcomeModal = document.getElementById('welcome-modal');
+        if (welcomeModal) {
+            welcomeModal.addEventListener('click', (e) => {
+                if (e.target === welcomeModal) {
+                    this.closeWelcome();
+                }
+            });
+        }
+    }
+
+    checkWelcomeDisplay() {
+        // Check localStorage to see if welcome was dismissed
+        const welcomeDismissed = localStorage.getItem('welcomeDismissed');
+        const dontShowAgain = localStorage.getItem('welcomeDontShowAgain');
+
+        // Show welcome if it hasn't been dismissed or if "don't show again" is not set
+        if (!welcomeDismissed || dontShowAgain !== 'true') {
+            // Add a small delay to ensure DOM is fully loaded
+            setTimeout(() => {
+                this.showWelcome();
+            }, 1000);
+        }
+    }
+
+    showWelcome() {
+        const welcomeModal = document.getElementById('welcome-modal');
+        if (welcomeModal) {
+            const modal = new bootstrap.Modal(welcomeModal, {
+                backdrop: 'static', // Prevent closing by clicking backdrop
+                keyboard: true,     // Allow ESC key to close
+                focus: true         // Focus management
+            });
+
+            modal.show();
+
+            // Focus management - focus the close button for accessibility
+            welcomeModal.addEventListener('shown.bs.modal', () => {
+                const closeBtn = document.getElementById('welcome-close-btn');
+                if (closeBtn) {
+                    closeBtn.focus();
+                }
+            });
+        }
+    }
+
+    closeWelcome() {
+        const welcomeModal = document.getElementById('welcome-modal');
+        const dontShowAgainCheck = document.getElementById('dontShowAgain');
+
+        if (welcomeModal) {
+            const modal = bootstrap.Modal.getInstance(welcomeModal);
+            if (modal) {
+                modal.hide();
+            }
+
+            // Save dismissal to localStorage
+            localStorage.setItem('welcomeDismissed', 'true');
+            localStorage.setItem('welcomeDismissedAt', Date.now().toString());
+
+            // Check if "don't show again" was selected
+            if (dontShowAgainCheck && dontShowAgainCheck.checked) {
+                localStorage.setItem('welcomeDontShowAgain', 'true');
+            }
+
+            // Focus management - return focus to help button
+            const helpBtn = document.getElementById('helpBtn');
+            if (helpBtn) {
+                helpBtn.focus();
+            }
+        }
+    }
+
+    resetWelcomePreferences() {
+        // Method to reset welcome preferences (useful for testing)
+        localStorage.removeItem('welcomeDismissed');
+        localStorage.removeItem('welcomeDismissedAt');
+        localStorage.removeItem('welcomeDontShowAgain');
+
+        // Uncheck the "don't show again" checkbox
+        const dontShowAgainCheck = document.getElementById('dontShowAgain');
+        if (dontShowAgainCheck) {
+            dontShowAgainCheck.checked = false;
+        }
+    }
+
+    getWelcomeStatus() {
+        // Method to get current welcome status (useful for debugging)
+        return {
+            dismissed: localStorage.getItem('welcomeDismissed'),
+            dismissedAt: localStorage.getItem('welcomeDismissedAt'),
+            dontShowAgain: localStorage.getItem('welcomeDontShowAgain'),
+            shouldShow: this.shouldShowWelcome()
+        };
+    }
+
+    shouldShowWelcome() {
+        // Check if welcome should be shown based on current settings
+        const welcomeDismissed = localStorage.getItem('welcomeDismissed');
+        const dontShowAgain = localStorage.getItem('welcomeDontShowAgain');
+
+        return !welcomeDismissed || dontShowAgain !== 'true';
     }
 }
 

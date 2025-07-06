@@ -66,14 +66,10 @@ class ADFSAuthenticator:
         }
 
         # Add certificate path if provided
-        if hasattr(request.credentials, 'certificate_path') and request.credentials.certificate_path:
+        if hasattr(request.credentials, "certificate_path") and request.credentials.certificate_path:
             options["custom_args"] = [f"--ssl-verification-certificate-path={request.credentials.certificate_path}"]
 
-        return command_builder.build_aws_adfs_command(
-            request.profile,
-            request.credentials.adfs_host,
-            **options
-        )
+        return command_builder.build_aws_adfs_command(request.profile, request.credentials.adfs_host, **options)
 
     async def _execute_command(self, cmd: list[str], env: dict[str, str], timeout: int) -> tuple[bool, str]:
         """

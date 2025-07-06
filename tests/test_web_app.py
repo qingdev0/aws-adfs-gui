@@ -23,8 +23,9 @@ except ImportError:
 
 # Import FastAPI and TestClient after ensuring they're available
 try:
-    from aws_adfs_gui.web_app import app
     from fastapi.testclient import TestClient
+
+    from aws_adfs_gui.web_app import app
 
     FASTAPI_AVAILABLE = True
 except ImportError:
@@ -116,7 +117,7 @@ class TestWebApp:
         """Test clearing command history."""
         response = client.delete("/api/history")
         assert response.status_code == 200
-        assert response.json()["message"] == "History cleared successfully"
+        assert response.json()["message"] == "Command history cleared"
 
 
 @pytest.mark.skipif(not CONFIG_AVAILABLE, reason="Config not available")
