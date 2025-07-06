@@ -52,9 +52,91 @@ pre-commit-run:
 web:
     uv run python -m aws_adfs.main web
 
+# Start the web application and open in browser
+web-open:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🚀 Starting AWS ADFS GUI web application..."
+    echo "📱 Opening browser at: http://127.0.0.1:8000"
+
+    # Kill any existing server processes
+    just kill-server || true
+
+    # Start the web server in background
+    uv run python -m aws_adfs.main web &
+    SERVER_PID=$!
+
+    # Wait a moment for server to start
+    sleep 2
+
+    # Open browser based on OS
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        open "http://127.0.0.1:8000"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux
+        xdg-open "http://127.0.0.1:8000"
+    elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+        # Windows
+        start "http://127.0.0.1:8000"
+    else
+        echo "⚠️  Could not detect OS. Please open http://127.0.0.1:8000 manually"
+    fi
+
+    # Wait for server process
+    wait $SERVER_PID
+
 # Start the web application in development mode
 web-dev:
     uv run uvicorn aws_adfs.web_app:app --reload --host 127.0.0.1 --port 8000
+
+# Start the web application in development mode and open in browser
+web-dev-open:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🚀 Starting AWS ADFS GUI web application in development mode..."
+    echo "📱 Opening browser at: http://127.0.0.1:8000"
+
+    # Kill any existing server processes
+    just kill-server || true
+
+    # Start the web server in background
+    uv run uvicorn aws_adfs.web_app:app --reload --host 127.0.0.1 --port 8000 &
+    SERVER_PID=$!
+
+    # Wait a moment for server to start
+    sleep 2
+
+    # Open browser based on OS
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        open "http://127.0.0.1:8000"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux
+        xdg-open "http://127.0.0.1:8000"
+    elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+        # Windows
+        start "http://127.0.0.1:8000"
+    else
+        echo "⚠️  Could not detect OS. Please open http://127.0.0.1:8000 manually"
+    fi
+
+    # Wait for server process
+    wait $SERVER_PID
+
+# Kill any running web server processes
+kill-server:
+    #!/usr/bin/env bash
+    echo "🔪 Stopping any running web server processes..."
+
+    # Kill processes using port 8000
+    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+
+    # Kill any python processes running the web app
+    pkill -f "aws_adfs.main web" 2>/dev/null || true
+    pkill -f "aws_adfs.web_app:app" 2>/dev/null || true
+
+    echo "✅ Server processes stopped"
 
 # Clean up generated files
 clean:
@@ -80,4 +162,4 @@ setup: install-dev pre-commit-install
     @echo "2. Start coding in src/aws_adfs/"
     @echo "3. Run tests: just test"
     @echo "4. Check code quality: just all"
-    @echo "5. Start web GUI: just web"
+    @echo "5. Start web GUI: just web-open"
