@@ -54,21 +54,26 @@ class ADFSAuthenticator:
             )
 
     def _build_command(self, request: AuthenticationRequest) -> list[str]:
-        """Build the aws-adfs command with appropriate flags."""
-        cmd = [
-            "aws-adfs",
-            "login",
-            f"--profile={request.profile}",
-            f"--adfs-host={request.credentials.adfs_host}",
-        ]
+        """Build the aws-adfs command with appropriate flags using FlexibleCommandBuilder."""
+        from .aws_credentials import command_builder
 
-        if request.settings.env_mode:
-            cmd.append("--env")
+        # Convert settings to options dict
+        options = {
+            "env_mode": request.settings.env_mode,
+            "no_sspi": request.settings.no_sspi,
+            "timeout": request.settings.timeout,
+            "retries": request.settings.retries,
+        }
 
-        if request.settings.no_sspi:
-            cmd.append("--no-sspi")
+        # Add certificate path if provided
+        if hasattr(request.credentials, 'certificate_path') and request.credentials.certificate_path:
+            options["custom_args"] = [f"--ssl-verification-certificate-path={request.credentials.certificate_path}"]
 
-        return cmd
+        return command_builder.build_aws_adfs_command(
+            request.profile,
+            request.credentials.adfs_host,
+            **options
+        )
 
     async def _execute_command(self, cmd: list[str], env: dict[str, str], timeout: int) -> tuple[bool, str]:
         """

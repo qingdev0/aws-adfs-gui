@@ -80,8 +80,8 @@ div#leftPanel {
     transition: all 0.3s ease;
     min-width: 200px;
     max-width: 600px;
-    width: 280px;
-    flex: 0 0 280px;
+    width: 320px;
+    flex: 0 0 320px;
     overflow: visible;
 }
 
@@ -495,4 +495,73 @@ div#rightPanel {
         opacity: 1;
         transform: scale(1);
     }
+}
+
+/* Profile connect buttons styling */
+.profile-connect-btn {
+    color: var(--bs-dark) !important;
+    text-decoration: none !important;
+    border: none !important;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+    border-radius: 6px;
+    padding: 8px 12px !important;
+    margin: 0;
+    background-color: transparent !important;
+}
+
+.profile-connect-btn:hover {
+    background-color: var(--bs-light) !important;
+    color: var(--bs-primary) !important;
+    transform: translateX(3px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.profile-connect-btn:active {
+    transform: translateX(1px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.profile-connect-btn:focus {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 1px;
+    background-color: var(--bs-light) !important;
+}
+
+/* Connected state styling */
+.profile-connect-btn.connected {
+    background-color: rgba(25, 135, 84, 0.1) !important;
+    color: var(--bs-success) !important;
+    border-left: 3px solid var(--bs-success);
+}
+
+.profile-connect-btn.connected:hover {
+    background-color: rgba(25, 135, 84, 0.2) !important;
+}
+
+/* Connecting state styling */
+.profile-connect-btn.connecting {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+    color: var(--bs-warning) !important;
+    border-left: 3px solid var(--bs-warning);
+}
+
+.profile-connect-btn.connecting:hover {
+    background-color: rgba(255, 193, 7, 0.2) !important;
+}
+
+/* Profile name span styling */
+.profile-connect-btn span {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+/* Profile item container */
+.profile-item {
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+}
+
+.profile-item:hover {
+    background-color: rgba(0, 0, 0, 0.02);
 }

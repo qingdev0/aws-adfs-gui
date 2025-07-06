@@ -12,7 +12,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
-    <link href="/static/styles.css" rel="stylesheet" />
+    <link href="/static/styles.css?v=2" rel="stylesheet" />
   </head>
   <body>
     <div class="container-fluid h-100">
@@ -83,13 +83,19 @@
               <i class="fas fa-chevron-left"></i>
             </button>
           </div>
-          <!-- Dev Profiles Section -->
+          <!-- Development Profiles Section -->
           <div class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <h6 class="text-primary mb-0">
-                <i class="fas fa-laptop-code me-2"></i>
-                Development
-              </h6>
+              <div class="d-flex align-items-center">
+                <h6 class="text-primary mb-0 me-3">
+                  <i class="fas fa-rocket me-2"></i>
+                  Development
+                </h6>
+                <div class="small" id="dev-group-status">
+                  <i class="fas fa-question-circle" style="color: #6c757d"></i>
+                  <span style="color: #6c757d">Unknown</span>
+                </div>
+              </div>
               <button
                 class="btn btn-outline-primary btn-sm"
                 id="selectDevBtn"
@@ -99,41 +105,37 @@
               </button>
             </div>
             <div class="profile-list">
-              <div class="form-check mb-2">
-                <input
-                  class="form-check-input profile-checkbox"
-                  type="checkbox"
-                  id="aws-dev-eu"
-                  value="aws-dev-eu"
-                />
-                <label
-                  class="form-check-label d-flex align-items-center"
-                  for="aws-dev-eu"
+              <div class="profile-item mb-2">
+                <button
+                  class="btn btn-link profile-connect-btn w-100 text-start d-flex align-items-center"
+                  onclick="app.connectProfile('aws-dev-eu')"
+                  id="aws-dev-eu-btn"
                 >
                   <span class="me-2">aws-dev-eu</span>
-                  <i
-                    class="fas fa-circle text-secondary ms-auto"
-                    id="status-aws-dev-eu"
-                  ></i>
-                </label>
+                  <div class="ms-auto small" id="aws-dev-eu-status">
+                    <i
+                      class="fas fa-question-circle"
+                      style="color: #6c757d"
+                    ></i>
+                    <span style="color: #6c757d">Unknown</span>
+                  </div>
+                </button>
               </div>
-              <div class="form-check mb-2">
-                <input
-                  class="form-check-input profile-checkbox"
-                  type="checkbox"
-                  id="aws-dev-sg"
-                  value="aws-dev-sg"
-                />
-                <label
-                  class="form-check-label d-flex align-items-center"
-                  for="aws-dev-sg"
+              <div class="profile-item mb-2">
+                <button
+                  class="btn btn-link profile-connect-btn w-100 text-start d-flex align-items-center"
+                  onclick="app.connectProfile('aws-dev-sg')"
+                  id="aws-dev-sg-btn"
                 >
                   <span class="me-2">aws-dev-sg</span>
-                  <i
-                    class="fas fa-circle text-secondary ms-auto"
-                    id="status-aws-dev-sg"
-                  ></i>
-                </label>
+                  <div class="ms-auto small" id="aws-dev-sg-status">
+                    <i
+                      class="fas fa-question-circle"
+                      style="color: #6c757d"
+                    ></i>
+                    <span style="color: #6c757d">Unknown</span>
+                  </div>
+                </button>
               </div>
             </div>
           </div>
@@ -141,10 +143,16 @@
           <!-- Non-Production Profiles Section -->
           <div class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <h6 class="text-warning mb-0">
-                <i class="fas fa-flask me-2"></i>
-                Non-Production
-              </h6>
+              <div class="d-flex align-items-center">
+                <h6 class="text-warning mb-0 me-3">
+                  <i class="fas fa-vial me-2"></i>
+                  Non-Production
+                </h6>
+                <div class="small" id="np-group-status">
+                  <i class="fas fa-question-circle" style="color: #6c757d"></i>
+                  <span style="color: #6c757d">Unknown</span>
+                </div>
+              </div>
               <button
                 class="btn btn-outline-warning btn-sm"
                 id="selectNpBtn"
@@ -154,59 +162,53 @@
               </button>
             </div>
             <div class="profile-list">
-              <div class="form-check mb-2">
-                <input
-                  class="form-check-input profile-checkbox"
-                  type="checkbox"
-                  id="kds-ets-np"
-                  value="kds-ets-np"
-                />
-                <label
-                  class="form-check-label d-flex align-items-center"
-                  for="kds-ets-np"
+              <div class="profile-item mb-2">
+                <button
+                  class="btn btn-link profile-connect-btn w-100 text-start d-flex align-items-center"
+                  onclick="app.connectProfile('kds-ets-np')"
+                  id="kds-ets-np-btn"
                 >
                   <span class="me-2">kds-ets-np</span>
-                  <i
-                    class="fas fa-circle text-secondary ms-auto"
-                    id="status-kds-ets-np"
-                  ></i>
-                </label>
+                  <div class="ms-auto small" id="kds-ets-np-status">
+                    <i
+                      class="fas fa-question-circle"
+                      style="color: #6c757d"
+                    ></i>
+                    <span style="color: #6c757d">Unknown</span>
+                  </div>
+                </button>
               </div>
-              <div class="form-check mb-2">
-                <input
-                  class="form-check-input profile-checkbox"
-                  type="checkbox"
-                  id="kds-gps-np"
-                  value="kds-gps-np"
-                />
-                <label
-                  class="form-check-label d-flex align-items-center"
-                  for="kds-gps-np"
+              <div class="profile-item mb-2">
+                <button
+                  class="btn btn-link profile-connect-btn w-100 text-start d-flex align-items-center"
+                  onclick="app.connectProfile('kds-gps-np')"
+                  id="kds-gps-np-btn"
                 >
                   <span class="me-2">kds-gps-np</span>
-                  <i
-                    class="fas fa-circle text-secondary ms-auto"
-                    id="status-kds-gps-np"
-                  ></i>
-                </label>
+                  <div class="ms-auto small" id="kds-gps-np-status">
+                    <i
+                      class="fas fa-question-circle"
+                      style="color: #6c757d"
+                    ></i>
+                    <span style="color: #6c757d">Unknown</span>
+                  </div>
+                </button>
               </div>
-              <div class="form-check mb-2">
-                <input
-                  class="form-check-input profile-checkbox"
-                  type="checkbox"
-                  id="kds-iss-np"
-                  value="kds-iss-np"
-                />
-                <label
-                  class="form-check-label d-flex align-items-center"
-                  for="kds-iss-np"
+              <div class="profile-item mb-2">
+                <button
+                  class="btn btn-link profile-connect-btn w-100 text-start d-flex align-items-center"
+                  onclick="app.connectProfile('kds-iss-np')"
+                  id="kds-iss-np-btn"
                 >
                   <span class="me-2">kds-iss-np</span>
-                  <i
-                    class="fas fa-circle text-secondary ms-auto"
-                    id="status-kds-iss-np"
-                  ></i>
-                </label>
+                  <div class="ms-auto small" id="kds-iss-np-status">
+                    <i
+                      class="fas fa-question-circle"
+                      style="color: #6c757d"
+                    ></i>
+                    <span style="color: #6c757d">Unknown</span>
+                  </div>
+                </button>
               </div>
             </div>
           </div>
@@ -214,10 +216,16 @@
           <!-- Production Profiles Section -->
           <div class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <h6 class="text-danger mb-0">
-                <i class="fas fa-shield-alt me-2"></i>
-                Production
-              </h6>
+              <div class="d-flex align-items-center">
+                <h6 class="text-danger mb-0 me-3">
+                  <i class="fas fa-shield-alt me-2"></i>
+                  Production
+                </h6>
+                <div class="small" id="pd-group-status">
+                  <i class="fas fa-question-circle" style="color: #6c757d"></i>
+                  <span style="color: #6c757d">Unknown</span>
+                </div>
+              </div>
               <button
                 class="btn btn-outline-danger btn-sm"
                 id="selectPdBtn"
@@ -227,59 +235,53 @@
               </button>
             </div>
             <div class="profile-list">
-              <div class="form-check mb-2">
-                <input
-                  class="form-check-input profile-checkbox"
-                  type="checkbox"
-                  id="kds-ets-pd"
-                  value="kds-ets-pd"
-                />
-                <label
-                  class="form-check-label d-flex align-items-center"
-                  for="kds-ets-pd"
+              <div class="profile-item mb-2">
+                <button
+                  class="btn btn-link profile-connect-btn w-100 text-start d-flex align-items-center"
+                  onclick="app.connectProfile('kds-ets-pd')"
+                  id="kds-ets-pd-btn"
                 >
                   <span class="me-2">kds-ets-pd</span>
-                  <i
-                    class="fas fa-circle text-secondary ms-auto"
-                    id="status-kds-ets-pd"
-                  ></i>
-                </label>
+                  <div class="ms-auto small" id="kds-ets-pd-status">
+                    <i
+                      class="fas fa-question-circle"
+                      style="color: #6c757d"
+                    ></i>
+                    <span style="color: #6c757d">Unknown</span>
+                  </div>
+                </button>
               </div>
-              <div class="form-check mb-2">
-                <input
-                  class="form-check-input profile-checkbox"
-                  type="checkbox"
-                  id="kds-gps-pd"
-                  value="kds-gps-pd"
-                />
-                <label
-                  class="form-check-label d-flex align-items-center"
-                  for="kds-gps-pd"
+              <div class="profile-item mb-2">
+                <button
+                  class="btn btn-link profile-connect-btn w-100 text-start d-flex align-items-center"
+                  onclick="app.connectProfile('kds-gps-pd')"
+                  id="kds-gps-pd-btn"
                 >
                   <span class="me-2">kds-gps-pd</span>
-                  <i
-                    class="fas fa-circle text-secondary ms-auto"
-                    id="status-kds-gps-pd"
-                  ></i>
-                </label>
+                  <div class="ms-auto small" id="kds-gps-pd-status">
+                    <i
+                      class="fas fa-question-circle"
+                      style="color: #6c757d"
+                    ></i>
+                    <span style="color: #6c757d">Unknown</span>
+                  </div>
+                </button>
               </div>
-              <div class="form-check mb-2">
-                <input
-                  class="form-check-input profile-checkbox"
-                  type="checkbox"
-                  id="kds-iss-pd"
-                  value="kds-iss-pd"
-                />
-                <label
-                  class="form-check-label d-flex align-items-center"
-                  for="kds-iss-pd"
+              <div class="profile-item mb-2">
+                <button
+                  class="btn btn-link profile-connect-btn w-100 text-start d-flex align-items-center"
+                  onclick="app.connectProfile('kds-iss-pd')"
+                  id="kds-iss-pd-btn"
                 >
                   <span class="me-2">kds-iss-pd</span>
-                  <i
-                    class="fas fa-circle text-secondary ms-auto"
-                    id="status-kds-iss-pd"
-                  ></i>
-                </label>
+                  <div class="ms-auto small" id="kds-iss-pd-status">
+                    <i
+                      class="fas fa-question-circle"
+                      style="color: #6c757d"
+                    ></i>
+                    <span style="color: #6c757d">Unknown</span>
+                  </div>
+                </button>
               </div>
             </div>
           </div>
@@ -297,42 +299,19 @@
           <!-- Tab Navigation -->
           <div class="border-bottom">
             <ul class="nav nav-tabs" id="profileTabs" role="tablist">
-              <li class="nav-item" role="presentation">
-                <button
-                  class="nav-link active"
-                  id="welcome-tab"
-                  data-bs-toggle="tab"
-                  data-bs-target="#welcome"
-                  type="button"
-                  role="tab"
-                >
-                  <i class="fas fa-home me-1"></i>
-                  Welcome
-                </button>
-              </li>
+              <!-- Profile tabs will be dynamically added here -->
             </ul>
           </div>
 
           <!-- Tab Content -->
           <div class="tab-content flex-fill" id="profileTabsContent">
-            <div
-              class="tab-pane fade show active p-4"
-              id="welcome"
-              role="tabpanel"
-            >
-              <div class="text-center">
-                <i class="fas fa-cloud fa-3x text-primary mb-3"></i>
-                <h5>Welcome to AWS ADFS GUI</h5>
-                <p class="text-muted">
-                  Select profiles from the left panel to get started.<br />
-                  Use "Select Dev" for quick development environment setup.
+            <div class="d-flex align-items-center justify-content-center h-100">
+              <div class="text-center text-muted">
+                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <h6>No profiles connected</h6>
+                <p class="mb-0">
+                  Select profiles from the left panel to get started
                 </p>
-                <div class="mt-4">
-                  <small class="text-muted">
-                    <i class="fas fa-info-circle me-1"></i>
-                    Connected profiles will appear as tabs above
-                  </small>
-                </div>
               </div>
             </div>
           </div>
@@ -696,6 +675,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=2"></script>
   </body>
 </html>

@@ -2,12 +2,12 @@ adfs
 adfsauthenticator
 adfsauthenticators
 adfshost
+asyncio
 authenticator
 authenticators
 aws
 awsprofile
 awsprofiles
-asyncio
 boto
 botocore
 charliermarsh
@@ -47,8 +47,8 @@ np
 parametrize
 password
 passwords
-pem
 pd
+pem
 profilegroup
 profilegroups
 pydantic
@@ -59,6 +59,7 @@ ruff
 s3
 skipif
 ssl
+sspi
 streetsidesoftware
 subprocess
 testpaths

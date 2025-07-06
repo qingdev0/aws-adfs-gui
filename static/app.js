@@ -3,24 +3,40 @@
 class AWSADFSApp {
     constructor() {
         this.ws = null;
-        this.connectedProfiles = new Set();
-        this.devProfilesSelected = false;
-        this.npProfilesSelected = false;
-        this.pdProfilesSelected = false;
-        this.commandHistory = [];
-        this.maxHistorySize = 100;
+        this.isConnected = false;
+        this.connectionAttempts = 0;
+        this.maxConnectionAttempts = 5;
+        this.reconnectDelay = 2000; // Start with 2 seconds
+        this.maxReconnectDelay = 30000; // Max 30 seconds
+        this.profiles = {
+            'aws-dev-eu': false,
+            'aws-dev-sg': false,
+            'kds-ets-np': false,
+            'kds-gps-np': false,
+            'kds-iss-np': false,
+            'kds-ets-pd': false,
+            'kds-gps-pd': false,
+            'kds-iss-pd': false
+        };
+        this.devProfiles = ['aws-dev-eu', 'aws-dev-sg'];
+        this.npProfiles = ['kds-ets-np', 'kds-gps-np', 'kds-iss-np'];
+        this.pdProfiles = ['kds-ets-pd', 'kds-gps-pd', 'kds-iss-pd'];
+
+        // Add credentials status tracking
+        this.credentialsStatus = {};
+        this.isValidatingCredentials = false;
 
         this.init();
     }
 
     init() {
-        console.log('AWS ADFS App initializing...');
-        this.setupEventListeners();
         this.setupWebSocket();
+        this.setupEventListeners();
         this.loadSettings();
-        this.loadHistory();
-        this.loadPanelPreferences();
-        console.log('AWS ADFS App initialized successfully');
+        this.setupPanelFunctionality();
+
+        // Validate credentials on startup
+        this.validateCredentialsOnStartup();
     }
 
     setupEventListeners() {
@@ -95,22 +111,6 @@ class AWSADFSApp {
         document.addEventListener('click', (e) => {
             this.handleClickOutside(e);
         });
-
-        // Profile checkboxes
-        document.querySelectorAll('.profile-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                this.toggleProfile(e.target.value, e.target.checked);
-
-                // Update group selection states
-                if (['aws-dev-eu', 'aws-dev-sg'].includes(e.target.value)) {
-                    this.updateDevProfilesState();
-                } else if (['kds-ets-np', 'kds-gps-np', 'kds-iss-np'].includes(e.target.value)) {
-                    this.updateNpProfilesState();
-                } else if (['kds-ets-pd', 'kds-gps-pd', 'kds-iss-pd'].includes(e.target.value)) {
-                    this.updatePdProfilesState();
-                }
-            });
-        });
     }
 
     setupWebSocket() {
@@ -121,73 +121,54 @@ class AWSADFSApp {
 
         this.ws.onopen = () => {
             console.log('WebSocket connected');
-            this.updateStatus('Connected', 'success');
+            this.isConnected = true;
+            this.connectionAttempts = 0;
+            this.reconnectDelay = 2000; // Reset delay
+            this.updateConnectionStatus();
         };
 
         this.ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            this.handleWebSocketMessage(data);
+            this.handleWebSocketMessage(JSON.parse(event.data));
         };
 
-        this.ws.onclose = () => {
+        this.ws.onclose = (event) => {
             console.log('WebSocket disconnected');
-            this.updateStatus('Disconnected', 'error');
-            // Try to reconnect after 3 seconds
-            setTimeout(() => this.setupWebSocket(), 3000);
+            this.isConnected = false;
+            this.updateConnectionStatus();
+            this.attemptReconnect();
         };
 
         this.ws.onerror = (error) => {
             console.error('WebSocket error:', error);
-            this.updateStatus('Error', 'error');
         };
     }
 
-    handleWebSocketMessage(data) {
-        switch (data.type) {
+    handleWebSocketMessage(message) {
+        switch (message.type) {
             case 'connection_status':
-                this.updateConnectionStatus(data.profile, data.status);
-
-                // Show message if provided
-                if (data.message) {
-                    const alertType = data.status === 'connected' ? 'success' :
-                                     data.status === 'connecting' ? 'info' : 'danger';
-                    this.showAlert(data.message, alertType);
-
-                    // For failed connections, show detailed diagnostic
-                    if (data.status === 'failed' || data.status === 'error') {
-                        this.showConnectionDiagnostic(data.profile, data.message);
-                    }
-                }
-
-                if (data.status === 'connected') {
-                    this.createProfileTab(data.profile);
-                    // Ensure checkbox is checked
-                    const checkbox = document.getElementById(data.profile);
-                    if (checkbox) checkbox.checked = true;
-
-                    // Update group states
-                    this.updateAllGroupStates(data.profile);
-                } else if (data.status === 'disconnected') {
-                    this.removeProfileTab(data.profile);
-                    // Uncheck the profile checkbox
-                    const checkbox = document.getElementById(data.profile);
-                    if (checkbox) checkbox.checked = false;
-
-                    // Update group states
-                    this.updateAllGroupStates(data.profile);
-                }
+                this.handleConnectionStatus(message);
                 break;
             case 'command_output':
-                this.updateCommandOutput(data.profile, data.output, data.is_error);
+                this.handleCommandOutput(message);
                 break;
             case 'command_complete':
-                this.commandComplete(data.profile, data.success, data.duration);
+                this.handleCommandComplete(message);
+                break;
+            case 'command_result':
+                this.handleCommandResult(message);
+                break;
+            case 'command_error':
+                this.handleCommandError(message);
+                break;
+            case 'credentials_validation_result':
+                this.handleCredentialsValidationResult(message);
+                break;
+            case 'credentials_validation_error':
+                this.handleCredentialsValidationError(message);
                 break;
             case 'error':
-                this.showAlert(data.message, 'error');
+                this.handleError(message);
                 break;
-            default:
-                console.log('Unknown message type:', data.type);
         }
     }
 
@@ -203,9 +184,6 @@ class AWSADFSApp {
 
             devProfiles.forEach(profile => {
                 this.disconnectProfile(profile);
-                // Uncheck the individual checkbox
-                const checkbox = document.getElementById(profile);
-                if (checkbox) checkbox.checked = false;
             });
         } else {
             // Connect dev profiles
@@ -215,9 +193,6 @@ class AWSADFSApp {
 
             devProfiles.forEach(profile => {
                 this.connectProfile(profile);
-                // Check the individual checkbox
-                const checkbox = document.getElementById(profile);
-                if (checkbox) checkbox.checked = true;
             });
         }
     }
@@ -227,10 +202,9 @@ class AWSADFSApp {
         const selectDevBtn = document.getElementById('selectDevBtn');
 
         // Check how many dev profiles are connected
-        const connectedDevProfiles = devProfiles.filter(profile => {
-            const checkbox = document.getElementById(profile);
-            return checkbox && checkbox.checked;
-        });
+        const connectedDevProfiles = devProfiles.filter(profile =>
+            this.connectedProfiles.has(profile)
+        );
 
         // Update the Select Dev button state
         if (connectedDevProfiles.length === devProfiles.length) {
@@ -263,9 +237,6 @@ class AWSADFSApp {
 
             npProfiles.forEach(profile => {
                 this.disconnectProfile(profile);
-                // Uncheck the individual checkbox
-                const checkbox = document.getElementById(profile);
-                if (checkbox) checkbox.checked = false;
             });
         } else {
             // Connect non-prod profiles
@@ -275,9 +246,6 @@ class AWSADFSApp {
 
             npProfiles.forEach(profile => {
                 this.connectProfile(profile);
-                // Check the individual checkbox
-                const checkbox = document.getElementById(profile);
-                if (checkbox) checkbox.checked = true;
             });
         }
     }
@@ -287,10 +255,9 @@ class AWSADFSApp {
         const selectNpBtn = document.getElementById('selectNpBtn');
 
         // Check how many non-prod profiles are connected
-        const connectedNpProfiles = npProfiles.filter(profile => {
-            const checkbox = document.getElementById(profile);
-            return checkbox && checkbox.checked;
-        });
+        const connectedNpProfiles = npProfiles.filter(profile =>
+            this.connectedProfiles.has(profile)
+        );
 
         // Update the Select Non-Prod button state
         if (connectedNpProfiles.length === npProfiles.length) {
@@ -323,9 +290,6 @@ class AWSADFSApp {
 
             pdProfiles.forEach(profile => {
                 this.disconnectProfile(profile);
-                // Uncheck the individual checkbox
-                const checkbox = document.getElementById(profile);
-                if (checkbox) checkbox.checked = false;
             });
         } else {
             // Connect production profiles
@@ -335,9 +299,6 @@ class AWSADFSApp {
 
             pdProfiles.forEach(profile => {
                 this.connectProfile(profile);
-                // Check the individual checkbox
-                const checkbox = document.getElementById(profile);
-                if (checkbox) checkbox.checked = true;
             });
         }
     }
@@ -347,10 +308,9 @@ class AWSADFSApp {
         const selectPdBtn = document.getElementById('selectPdBtn');
 
         // Check how many production profiles are connected
-        const connectedPdProfiles = pdProfiles.filter(profile => {
-            const checkbox = document.getElementById(profile);
-            return checkbox && checkbox.checked;
-        });
+        const connectedPdProfiles = pdProfiles.filter(profile =>
+            this.connectedProfiles.has(profile)
+        );
 
         // Update the Select Production button state
         if (connectedPdProfiles.length === pdProfiles.length) {
@@ -383,23 +343,23 @@ class AWSADFSApp {
     }
 
     connectProfile(profile) {
+        // Check if already connected
+        if (this.connectedProfiles.has(profile)) {
+            // If connected, disconnect
+            this.disconnectProfile(profile);
+            return;
+        }
+
         // Get credentials from settings
         const credentials = this.getCredentials();
         if (!credentials) {
             this.showAlert('Please configure ADFS credentials in settings first', 'warning');
-            // Uncheck the profile if it was checked via checkbox
-            const checkbox = document.getElementById(profile);
-            if (checkbox) checkbox.checked = false;
-
-            // Update dev profiles state if needed
-            if (['aws-dev-eu', 'aws-dev-sg'].includes(profile)) {
-                this.updateDevProfilesState();
-            }
             return;
         }
 
         // Update status to connecting
         this.updateConnectionStatus(profile, 'connecting');
+        this.updateProfileButtonState(profile, 'connecting');
 
         // Send connection request via WebSocket with credentials
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -409,12 +369,11 @@ class AWSADFSApp {
                 credentials: credentials
             }));
         }
-
-        // Remove the simulation - real connection will be handled by WebSocket response
     }
 
     disconnectProfile(profile) {
         this.updateConnectionStatus(profile, 'disconnected');
+        this.updateProfileButtonState(profile, 'disconnected');
         this.removeProfileTab(profile);
         this.connectedProfiles.delete(profile);
 
@@ -424,6 +383,31 @@ class AWSADFSApp {
                 type: 'disconnect_profile',
                 profile: profile
             }));
+        }
+
+        // Update group states
+        this.updateAllGroupStates(profile);
+    }
+
+    updateProfileButtonState(profile, status) {
+        const profileBtn = document.getElementById(`${profile}-btn`);
+        if (profileBtn) {
+            // Remove all status classes
+            profileBtn.classList.remove('connected', 'connecting', 'disconnected');
+
+            // Add appropriate status class
+            switch (status) {
+                case 'connected':
+                    profileBtn.classList.add('connected');
+                    break;
+                case 'connecting':
+                    profileBtn.classList.add('connecting');
+                    break;
+                case 'disconnected':
+                default:
+                    profileBtn.classList.add('disconnected');
+                    break;
+            }
         }
     }
 
@@ -460,6 +444,12 @@ class AWSADFSApp {
                     break;
             }
         }
+
+        // Update button state as well
+        this.updateProfileButtonState(profile, status);
+
+        // Update group states
+        this.updateAllGroupStates(profile);
     }
 
     createProfileTab(profile) {
@@ -530,7 +520,7 @@ class AWSADFSApp {
         tabContent.classList.add('animate-in');
     }
 
-    removeProfileTab(profile) {
+        removeProfileTab(profile) {
         const tabButton = document.getElementById(`${profile}-tab`);
         const tabContent = document.getElementById(profile);
 
@@ -542,34 +532,20 @@ class AWSADFSApp {
             tabContent.remove();
         }
 
-        // If no tabs left, show welcome tab
+        // If there are remaining tabs, activate the first one
         const remainingTabs = document.querySelectorAll('#profileTabs .nav-item').length;
-        if (remainingTabs === 1) { // Only welcome tab remains
-            const welcomeTab = new bootstrap.Tab(document.getElementById('welcome-tab'));
-            welcomeTab.show();
+        if (remainingTabs > 0) {
+            const firstTab = document.querySelector('#profileTabs .nav-link');
+            if (firstTab) {
+                const tab = new bootstrap.Tab(firstTab);
+                tab.show();
+            }
         }
     }
 
     closeTab(profile) {
         this.removeProfileTab(profile);
         this.disconnectProfile(profile);
-
-        // Uncheck the individual checkbox
-        const checkbox = document.getElementById(profile);
-        if (checkbox) checkbox.checked = false;
-
-        // Update dev profiles selection if needed
-        if (['aws-dev-eu', 'aws-dev-sg'].includes(profile)) {
-            this.updateDevProfilesState();
-        }
-    }
-
-    toggleProfile(profile, checked) {
-        if (checked) {
-            this.connectProfile(profile);
-        } else {
-            this.disconnectProfile(profile);
-        }
     }
 
     getCredentials() {
@@ -1236,8 +1212,8 @@ class AWSADFSApp {
 
         // Double-click to reset width
         resizeHandle.addEventListener('dblclick', () => {
-            leftPanel.style.width = '280px';
-            leftPanel.style.flex = '0 0 280px';
+            leftPanel.style.width = '320px';
+            leftPanel.style.flex = '0 0 320px';
             localStorage.removeItem('leftPanelWidth');
         });
     }
@@ -1290,8 +1266,8 @@ class AWSADFSApp {
                 leftPanel.style.width = savedWidth;
                 leftPanel.style.flex = `0 0 ${savedWidth}`;
             } else {
-                leftPanel.style.width = '280px';
-                leftPanel.style.flex = '0 0 280px';
+                leftPanel.style.width = '320px';
+                leftPanel.style.flex = '0 0 320px';
             }
         }
     }
@@ -1311,6 +1287,253 @@ class AWSADFSApp {
             !togglePanelBtn.contains(e.target)) {
             this.hideLeftPanel();
         }
+    }
+
+    async validateCredentialsOnStartup() {
+        try {
+            this.isValidatingCredentials = true;
+            this.updateCredentialsStatusDisplay();
+
+            const response = await fetch('/api/credentials/validate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.credentialsStatus = data.profiles;
+                this.updateCredentialsStatusDisplay();
+
+                console.log('Credentials validation completed:', data.summary);
+            } else {
+                console.error('Failed to validate credentials on startup');
+            }
+        } catch (error) {
+            console.error('Error validating credentials:', error);
+        } finally {
+            this.isValidatingCredentials = false;
+        }
+    }
+
+    async validateCredentials(profiles = null) {
+        try {
+            this.isValidatingCredentials = true;
+            this.updateCredentialsStatusDisplay();
+
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                // Use WebSocket for real-time updates
+                this.ws.send(JSON.stringify({
+                    type: 'validate_credentials',
+                    profiles: profiles
+                }));
+            } else {
+                // Fallback to HTTP API
+                const response = await fetch('/api/credentials/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ profiles: profiles })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    this.credentialsStatus = data.profiles;
+                    this.updateCredentialsStatusDisplay();
+                }
+            }
+        } catch (error) {
+            console.error('Error validating credentials:', error);
+            this.showAlert('Failed to validate credentials: ' + error.message, 'error');
+        } finally {
+            this.isValidatingCredentials = false;
+        }
+    }
+
+    handleCredentialsValidationResult(message) {
+        this.credentialsStatus = message.results;
+        this.updateCredentialsStatusDisplay();
+        this.isValidatingCredentials = false;
+
+        const summary = message.summary;
+        let summaryText = `Validation complete: `;
+        if (summary.valid) summaryText += `${summary.valid} active, `;
+        if (summary.expired) summaryText += `${summary.expired} expired, `;
+        if (summary.invalid) summaryText += `${summary.invalid} invalid, `;
+        if (summary.missing) summaryText += `${summary.missing} not configured`;
+
+        this.showAlert(summaryText, 'info');
+    }
+
+    handleCredentialsValidationError(message) {
+        this.isValidatingCredentials = false;
+        this.showAlert('Credential validation failed: ' + message.error, 'error');
+    }
+
+    updateCredentialsStatusDisplay() {
+        Object.keys(this.profiles).forEach(profile => {
+            this.updateProfileCredentialStatus(profile);
+        });
+
+        // Update group status indicators
+        this.updateGroupCredentialStatus();
+    }
+
+    updateProfileCredentialStatus(profile) {
+        const status = this.credentialsStatus[profile];
+        const profileElement = document.getElementById(profile);
+        const statusElement = document.getElementById(`${profile}-status`);
+
+        if (!profileElement || !statusElement) return;
+
+        if (this.isValidatingCredentials && !status) {
+            // Show loading state
+            statusElement.innerHTML = `
+                <i class="fas fa-spinner fa-spin" style="color: #17a2b8;"></i>
+                <span style="color: #17a2b8;">Checking...</span>
+            `;
+            return;
+        }
+
+        if (status) {
+            const config = status;
+            statusElement.innerHTML = `
+                <i class="${config.icon}" style="color: ${config.color};"></i>
+                <span style="color: ${config.color};">${config.label}</span>
+            `;
+
+            // Add tooltip with detailed message
+            statusElement.setAttribute('title', status.message);
+            statusElement.setAttribute('data-bs-toggle', 'tooltip');
+
+            // Add click handler for expired/invalid credentials
+            if (status.status === 'expired' || status.status === 'invalid') {
+                statusElement.style.cursor = 'pointer';
+                statusElement.onclick = () => {
+                    this.refreshCredentials(profile);
+                };
+            }
+        } else {
+            statusElement.innerHTML = `
+                <i class="fas fa-question-circle" style="color: #6c757d;"></i>
+                <span style="color: #6c757d;">Unknown</span>
+            `;
+        }
+    }
+
+    updateGroupCredentialStatus() {
+        this.updateGroupStatus('dev', this.devProfiles);
+        this.updateGroupStatus('np', this.npProfiles);
+        this.updateGroupStatus('pd', this.pdProfiles);
+    }
+
+    updateGroupStatus(groupName, profileList) {
+        const groupStatusElement = document.getElementById(`${groupName}-group-status`);
+        if (!groupStatusElement) return;
+
+        let validCount = 0;
+        let expiredCount = 0;
+        let invalidCount = 0;
+        let missingCount = 0;
+        let totalCount = profileList.length;
+
+        profileList.forEach(profile => {
+            const status = this.credentialsStatus[profile];
+            if (status) {
+                switch (status.status) {
+                    case 'valid': validCount++; break;
+                    case 'expired': expiredCount++; break;
+                    case 'invalid': invalidCount++; break;
+                    case 'missing': missingCount++; break;
+                }
+            } else {
+                missingCount++;
+            }
+        });
+
+        let statusColor, statusIcon, statusText;
+
+        if (validCount === totalCount) {
+            statusColor = '#28a745';
+            statusIcon = 'fas fa-check-circle';
+            statusText = 'All Active';
+        } else if (expiredCount > 0) {
+            statusColor = '#ffc107';
+            statusIcon = 'fas fa-clock';
+            statusText = `${expiredCount} Expired`;
+        } else if (invalidCount > 0 || missingCount > 0) {
+            statusColor = '#dc3545';
+            statusIcon = 'fas fa-exclamation-triangle';
+            statusText = `${invalidCount + missingCount} Issues`;
+        } else {
+            statusColor = '#6c757d';
+            statusIcon = 'fas fa-question-circle';
+            statusText = 'Unknown';
+        }
+
+        groupStatusElement.innerHTML = `
+            <i class="${statusIcon}" style="color: ${statusColor};"></i>
+            <span style="color: ${statusColor};">${statusText}</span>
+        `;
+
+        // Add click handler for group refresh
+        groupStatusElement.style.cursor = 'pointer';
+        groupStatusElement.onclick = () => {
+            this.refreshGroupCredentials(profileList);
+        };
+    }
+
+    async refreshCredentials(profile) {
+        const credentials = this.getCredentials();
+        if (!credentials) {
+            this.showAlert('Please configure ADFS credentials first', 'warning');
+            return;
+        }
+
+        this.connectProfile(profile);
+    }
+
+    async refreshGroupCredentials(profileList) {
+        const credentials = this.getCredentials();
+        if (!credentials) {
+            this.showAlert('Please configure ADFS credentials first', 'warning');
+            return;
+        }
+
+        // Connect all profiles in the group
+        profileList.forEach(profile => {
+            if (this.credentialsStatus[profile]?.status !== 'valid') {
+                this.connectProfile(profile);
+            }
+        });
+    }
+
+    async refreshAllCredentials() {
+        const credentials = this.getCredentials();
+        if (!credentials) {
+            this.showAlert('Please configure ADFS credentials first', 'warning');
+            return;
+        }
+
+        // Find all profiles that need refresh
+        const profilesToRefresh = Object.keys(this.profiles).filter(profile => {
+            const status = this.credentialsStatus[profile];
+            return !status || status.status !== 'valid';
+        });
+
+        if (profilesToRefresh.length === 0) {
+            this.showAlert('All credentials are already active', 'info');
+            return;
+        }
+
+        // Connect profiles that need refresh
+        profilesToRefresh.forEach(profile => {
+            this.connectProfile(profile);
+        });
+
+        this.showAlert(`Refreshing ${profilesToRefresh.length} profiles...`, 'info');
     }
 }
 
