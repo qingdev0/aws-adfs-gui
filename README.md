@@ -1,55 +1,70 @@
-# AWS ADFS
+# AWS ADFS GUI
 
-A Python project for AWS ADFS integration.
+A modern Python web application for AWS ADFS integration with multi-profile command execution.
 
 ## Features
 
-- Modern Python development setup
-- Type hints with mypy
-- Linting and formatting with ruff
-- Testing with pytest
-- Pre-commit hooks
-- CI/CD with GitHub Actions
-- **Web-based GUI for AWS multi-profile command execution**
+- **🚀 Modern Python Development Setup**
+
+  - Python 3.12 with type hints and mypy
+  - Linting and formatting with ruff
+  - Testing with pytest and coverage
+  - Pre-commit hooks for code quality
+  - CI/CD with GitHub Actions
+  - Automated dependency updates with Dependabot
+
+- **🌐 Web-based GUI for AWS Multi-Profile Commands**
+
   - Execute AWS commands across multiple profiles simultaneously
   - Smart error handling (dev profiles first, then others)
-  - Real-time results streaming
+  - Real-time results streaming via WebSocket
   - Command history (last 100 commands)
   - Export results in JSON, CSV, or text formats
   - Profile grouping (dev, non-production, production)
 
+- **🔐 Secure Configuration Management**
+  - Encrypted credential storage with Fernet encryption
+  - Configuration stored in `~/.aws/gui/` directory
+  - Automatic credential validation and testing
+  - ADFS authentication integration
+
 ## Requirements
 
-- Python 3.8+
-- uv (for dependency management)
+- **Python 3.12** (pinned version)
+- **uv** (for fast dependency management)
+- **AWS CLI** (for profile management)
 
 ## Installation
 
-1. Clone the repository:
+1. **Clone the repository:**
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/qingdev0/aws-adfs-gui.git
 cd aws-adfs-gui
 ```
 
-2. Install uv if you haven't already:
+2. **Install uv if you haven't already:**
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-3. Install dependencies:
+3. **Quick setup (recommended):**
 
 ```bash
-uv sync --dev
+just setup
 ```
 
-4. Activate the virtual environment:
+This will install dependencies, set up pre-commit hooks, and run initial checks.
+
+4. **Manual setup:**
 
 ```bash
-source .venv/bin/activate  # On Unix/macOS
-# or
-.venv\Scripts\activate     # On Windows
+# Install dependencies
+uv sync --dev
+
+# Install pre-commit hooks
+just pre-commit-install
 ```
 
 ## Development
@@ -61,180 +76,268 @@ aws-adfs-gui/
 ├── src/
 │   └── aws_adfs_gui/
 │       ├── __init__.py
-│       └── main.py
-├── tests/
-│   ├── __init__.py
-│   └── test_main.py
-├── pyproject.toml
-├── .pre-commit-config.yaml
+│       ├── main.py              # CLI entry point
+│       ├── web_app.py           # FastAPI web application
+│       ├── models.py            # Data models
+│       ├── config.py            # Configuration management
+│       ├── secure_config.py     # Secure credential storage
+│       ├── aws_credentials.py   # AWS credential management
+│       ├── adfs_auth.py         # ADFS authentication
+│       └── command_executor.py  # Command execution engine
+├── tests/                       # Comprehensive test suite
+├── static/                      # Web UI assets
+│   ├── index.html
+│   ├── styles.css
+│   └── app.js
 ├── .github/
-│   └── workflows/
-│       └── ci.yml
+│   ├── workflows/ci.yml         # GitHub Actions CI
+│   └── dependabot.yml          # Automated dependency updates
+├── pyproject.toml               # Python project configuration
+├── justfile                     # Project commands
 └── README.md
 ```
 
 ### Available Commands
 
-- **Install dependencies**: `uv sync --dev`
-- **Run tests**: `uv run pytest`
-- **Run tests with coverage**: `uv run pytest --cov=src`
-- **Lint code**: `uv run ruff check .`
-- **Format code**: `uv run ruff format .`
-- **Type check**: `uv run mypy src/`
-- **Install pre-commit hooks**: `uv run pre-commit install`
-- **Start web GUI**: `just web` or `uv run python -m aws_adfs_gui.main web`
-- **Start web GUI (dev mode)**: `just web-dev`
+**Just commands (recommended):**
 
-**Or use Just commands (recommended):**
-- `just install-dev` - Install development dependencies
-- `just test` - Run tests
-- `just test-cov` - Run tests with coverage
-- `just lint` - Check code quality
-- `just format` - Format code
-- `just type-check` - Run type checking
-- `just all` - Run all quality checks
-- `just web` - Start web application
-- `just web-dev` - Start web application in development mode
-- `just setup` - Complete project setup
+```bash
+# Setup and Installation
+just setup              # Complete project setup
+just install-dev         # Install development dependencies
+just install             # Install production dependencies
+
+# Development
+just web-open            # Start web app and open browser automatically
+just web-dev-open        # Start web app in dev mode and open browser
+just web                 # Start web application
+just web-dev             # Start web application in development mode
+
+# Testing and Quality
+just test                # Run tests
+just test-cov            # Run tests with coverage
+just lint                # Check code quality
+just lint-fix            # Fix linting issues automatically
+just format              # Format code
+just format-check        # Check code formatting
+just type-check          # Run type checking
+just all                 # Run all quality checks
+
+# Utilities
+just kill-server         # Kill any running web server processes
+just clean               # Clean up generated files
+just pre-commit-install  # Install pre-commit hooks
+just pre-commit-run      # Run pre-commit hooks on all files
+```
+
+**Direct uv commands:**
+
+```bash
+# Install dependencies
+uv sync --dev
+
+# Run tests
+uv run pytest
+uv run pytest --cov=src
+
+# Code quality
+uv run ruff check .
+uv run ruff format .
+uv run mypy src/
+
+# Start web application
+uv run python -m aws_adfs_gui.main web
+```
 
 ### Pre-commit Hooks
 
-The project uses pre-commit hooks to ensure code quality. Install them with:
+The project uses pre-commit hooks to ensure code quality:
 
 ```bash
-uv run pre-commit install
+just pre-commit-install
 ```
 
-This will automatically run:
+This automatically runs on every commit:
 
-- ruff (linting and formatting)
-- mypy (type checking)
-- pytest (tests)
-- Various file checks
+- **ruff** (linting and formatting)
+- **mypy** (type checking)
+- **pytest** (tests)
+- **File checks** (trailing whitespace, end of files, YAML syntax)
 
 ### Adding Dependencies
 
-To add a new dependency:
-
 ```bash
+# Add runtime dependency
 uv add package-name
-```
 
-To add a development dependency:
-
-```bash
+# Add development dependency
 uv add --dev package-name
 ```
 
-## Testing
+## Web GUI Usage
 
-The project uses pytest for testing. Tests are located in the `tests/` directory.
+### Quick Start
 
 ```bash
-# Run all tests
-uv run pytest
+# Start the web application and open browser automatically
+just web-open
 
-# Run tests with coverage
-uv run pytest --cov=src
-
-# Run specific test file
-uv run pytest tests/test_main.py
-
-# Run tests with verbose output
-uv run pytest -v
+# Or for development with auto-reload
+just web-dev-open
 ```
 
-## Web GUI
+The application will:
 
-The project includes a web-based GUI for executing AWS commands across multiple profiles.
+1. **Start the server** on `http://127.0.0.1:8000`
+2. **Automatically open your browser** to the application
+3. **Kill any existing server processes** to prevent port conflicts
 
-### Starting the GUI
+### Manual Start
 
 ```bash
-# Start the web application
+# Start the server
 just web
 
-# Or directly
-uv run python -m aws_adfs_gui.main web
-
-# For development with auto-reload
-just web-dev
+# Then open http://127.0.0.1:8000 in your browser
 ```
 
 ### Using the GUI
 
-1. **Open your browser** to `http://127.0.0.1:8000`
-2. **Select AWS profiles** from the left panel (grouped by dev, non-production, production)
-3. **Enter a command** in the center panel (e.g., `aws s3 ls`, `aws ec2 describe-instances`)
-4. **Click Execute** to run the command across selected profiles
-5. **View results** in separate tabs on the right panel
-6. **Export results** in JSON, CSV, or text format
+1. **📱 Open Browser**: Navigate to `http://127.0.0.1:8000`
+2. **🔧 Configure Settings**: Set up ADFS credentials in the configuration panel
+3. **👥 Select AWS Profiles**: Choose from the left panel (grouped by environment)
+4. **⚡ Execute Commands**: Enter AWS CLI commands in the center panel
+5. **📊 View Results**: Real-time results appear in separate tabs
+6. **💾 Export Data**: Download results in JSON, CSV, or text format
 
-### Features
+### Key Features
 
-- **Smart Error Handling**: Dev profiles execute first. If they fail, other profiles are skipped
-- **Real-time Results**: See results as they complete
-- **Command History**: Reuse previous commands (last 100)
-- **Profile Groups**:
+- **🎯 Smart Error Handling**: Dev profiles execute first; failures skip other profiles
+- **📺 Real-time Updates**: WebSocket streaming for live results
+- **📚 Command History**: Easily reuse previous commands (last 100)
+- **🏷️ Profile Grouping**:
   - **Dev**: `aws-dev-eu`, `aws-dev-sg`
   - **Non-Production**: `kds-ets-np`, `kds-gps-np`, `kds-iss-np`
   - **Production**: `kds-ets-pd`, `kds-gps-pd`, `kds-iss-pd`
-- **Export Options**: Download results in multiple formats
+- **📤 Export Options**: Multiple output formats available
+
+## Testing
+
+Comprehensive test suite with pytest:
+
+```bash
+# Run all tests
+just test
+
+# Run tests with coverage report
+just test-cov
+
+# Run specific test file
+uv run pytest tests/test_web_app.py
+
+# Run with verbose output
+uv run pytest -v
+```
+
+**Test Coverage**: 166 tests covering all major functionality including:
+
+- Web application endpoints
+- AWS credential management
+- ADFS authentication
+- Command execution
+- Configuration management
+- Security features
 
 ## Code Quality
 
 ### Linting and Formatting
 
-The project uses ruff for both linting and formatting:
+Using **ruff** for fast linting and formatting:
 
 ```bash
-# Check for linting issues
-uv run ruff check .
+# Check for issues
+just lint
 
-# Fix linting issues automatically
-uv run ruff check . --fix
+# Fix issues automatically
+just lint-fix
 
 # Format code
-uv run ruff format .
+just format
 
-# Check formatting without making changes
-uv run ruff format . --check
+# Check formatting
+just format-check
 ```
 
 ### Type Checking
 
-Type checking is done with mypy:
+Using **mypy** for static type checking:
 
 ```bash
 # Run type checker
-uv run mypy src/
+just type-check
 
-# Run type checker with more verbose output
-uv run mypy src/ --verbose
+# All quality checks at once
+just all
 ```
 
 ## CI/CD
 
-The project includes GitHub Actions workflows that run on push and pull requests:
+- **GitHub Actions**: Automated testing on push and pull requests
+- **Python 3.12**: Consistent version across development and CI
+- **Quality Gates**: Linting, formatting, type checking, and tests
+- **Dependabot**: Automated dependency updates
+- **Coverage Reporting**: Test coverage tracking
 
-- Tests on multiple Python versions (3.8-3.12)
-- Linting and formatting checks
-- Type checking
-- Coverage reporting
+## Security
+
+- **🔐 Encrypted Storage**: Credentials encrypted with Fernet
+- **🏠 Local Storage**: Configuration in `~/.aws/gui/` directory
+- **🔒 Secure Defaults**: No credentials stored in plain text
+- **✅ Validation**: Automatic credential testing and validation
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and quality checks:
-   ```bash
-   just all
-   ```
-5. Commit your changes
-6. Push to your fork
-7. Create a pull request
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature-name`
+3. **Make your changes**
+4. **Run quality checks**: `just all`
+5. **Commit with conventional commits**: `git commit -m "feat: add new feature"`
+6. **Push to your fork**: `git push origin feature-name`
+7. **Create a pull request**
 
 ## License
 
 [Add your license here]
+
+## Troubleshooting
+
+### Common Issues
+
+**Port already in use:**
+
+```bash
+just kill-server
+```
+
+**Dependencies out of sync:**
+
+```bash
+uv sync --dev
+```
+
+**Pre-commit hooks failing:**
+
+```bash
+just pre-commit-run
+```
+
+**Browser doesn't open automatically:**
+
+- Manual access: `http://127.0.0.1:8000`
+- Check OS compatibility in justfile
+
+### Getting Help
+
+- **View available commands**: `just --list`
+- **Project setup**: `just setup`
+- **Clean start**: `just clean && just setup`
