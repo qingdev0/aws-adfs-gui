@@ -29,7 +29,7 @@ A Python project for AWS ADFS integration.
 
 ```bash
 git clone <repository-url>
-cd aws-adfs
+cd aws-adfs-gui
 ```
 
 2. Install uv if you haven't already:
@@ -57,9 +57,9 @@ source .venv/bin/activate  # On Unix/macOS
 ### Project Structure
 
 ```
-aws-adfs/
+aws-adfs-gui/
 ├── src/
-│   └── aws_adfs/
+│   └── aws_adfs_gui/
 │       ├── __init__.py
 │       └── main.py
 ├── tests/
@@ -82,7 +82,7 @@ aws-adfs/
 - **Format code**: `uv run ruff format .`
 - **Type check**: `uv run mypy src/`
 - **Install pre-commit hooks**: `uv run pre-commit install`
-- **Start web GUI**: `just web` or `uv run python -m aws_adfs.main web`
+- **Start web GUI**: `just web` or `uv run python -m aws_adfs_gui.main web`
 - **Start web GUI (dev mode)**: `just web-dev`
 
 **Or use Just commands (recommended):**
@@ -155,7 +155,7 @@ The project includes a web-based GUI for executing AWS commands across multiple 
 just web
 
 # Or directly
-uv run python -m aws_adfs.main web
+uv run python -m aws_adfs_gui.main web
 
 # For development with auto-reload
 just web-dev

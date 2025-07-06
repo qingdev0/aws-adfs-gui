@@ -506,7 +506,7 @@ async def export_results(export_request: ExportRequest, results: list[CommandRes
 
 def run_app(host: str = "127.0.0.1", port: int = 8000, reload: bool = True) -> None:
     """Run the FastAPI application."""
-    uvicorn.run("src.aws_adfs.web_app:app", host=host, port=port, reload=reload)
+    uvicorn.run("src.aws_adfs_gui.web_app:app", host=host, port=port, reload=reload)
 
 
 if __name__ == "__main__":
