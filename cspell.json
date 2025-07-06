@@ -1,0 +1,28 @@
+{
+  "version": "0.2",
+  "ignorePaths": [
+    "htmlcov/**",
+    ".coverage",
+    "coverage.xml",
+    ".mypy_cache/**",
+    ".pytest_cache/**",
+    ".ruff_cache/**",
+    "__pycache__/**",
+    "*.pyc",
+    "**/*.egg-info/**",
+    ".git/**",
+    ".venv/**",
+    "uv.lock"
+  ],
+  "dictionaryDefinitions": [
+    {
+      "name": "workspace-dictionary",
+      "path": ".vscode/dictionary.txt",
+      "addWords": true
+    }
+  ],
+  "dictionaries": ["workspace-dictionary"],
+  "language": "en",
+  "allowCompoundWords": true,
+  "caseSensitive": false
+}

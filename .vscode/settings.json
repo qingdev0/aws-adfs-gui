@@ -33,6 +33,20 @@
     }
   },
   "cSpell.dictionaries": ["workspace-dictionary"],
+  "cSpell.ignorePaths": [
+    "htmlcov/**",
+    ".coverage",
+    "coverage.xml",
+    ".mypy_cache/**",
+    ".pytest_cache/**",
+    ".ruff_cache/**",
+    "__pycache__/**",
+    "*.pyc",
+    "**/*.egg-info/**",
+    ".git/**",
+    ".venv/**",
+    "uv.lock"
+  ],
 
   // File associations
   "files.associations": {
