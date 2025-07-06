@@ -449,8 +449,8 @@ class AWSADFSApp {
     connectProfile(profile) {
         // Check if already connected
         if (this.connectedProfiles.has(profile)) {
-            // If connected, disconnect
-            this.disconnectProfile(profile);
+            // If connected, show safe disconnect dialog
+            this.safeDisconnectProfile(profile);
             return;
         }
 
@@ -719,9 +719,6 @@ class AWSADFSApp {
         tabButton.innerHTML = `
             <i class="fas fa-server me-1"></i>
             ${profile}
-            <button class="btn btn-sm btn-outline-secondary ms-2 close-tab" data-profile="${profile}">
-                <i class="fas fa-times"></i>
-            </button>
         `;
 
         tabItem.appendChild(tabButton);
@@ -737,6 +734,9 @@ class AWSADFSApp {
                 <h6 class="mb-0">
                     <i class="fas fa-server me-2"></i>
                     ${profile}
+                    <span class="badge bg-success ms-2">
+                        <i class="fas fa-link me-1"></i>Connected
+                    </span>
                 </h6>
                 <div>
                     <button class="btn btn-outline-primary btn-sm" onclick="app.exportResults('${profile}')">
@@ -744,6 +744,9 @@ class AWSADFSApp {
                     </button>
                     <button class="btn btn-outline-secondary btn-sm ms-2" onclick="app.clearResults('${profile}')">
                         <i class="fas fa-trash me-1"></i> Clear
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm ms-2" onclick="app.safeDisconnectProfile('${profile}')" title="Disconnect from this profile">
+                        <i class="fas fa-unlink me-1"></i> Disconnect
                     </button>
                 </div>
             </div>
@@ -753,12 +756,6 @@ class AWSADFSApp {
         `;
 
         contentContainer.appendChild(tabContent);
-
-        // Add close tab event listener
-        tabButton.querySelector('.close-tab').addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.closeTab(profile);
-        });
 
         // Activate the new tab
         const tab = new bootstrap.Tab(tabButton);
@@ -794,6 +791,24 @@ class AWSADFSApp {
     closeTab(profile) {
         this.removeProfileTab(profile);
         this.disconnectProfile(profile);
+    }
+
+    safeDisconnectProfile(profile) {
+        // Show confirmation dialog for safe disconnection
+        const confirmDisconnect = confirm(
+            `Are you sure you want to disconnect from "${profile}"?\n\n` +
+            `This will:\n` +
+            `• Close the active session\n` +
+            `• Remove the tab and all output\n` +
+            `• Stop any running commands\n\n` +
+            `You can reconnect anytime from the left panel.`
+        );
+
+        if (confirmDisconnect) {
+            this.showAlert(`Disconnecting from ${profile}...`, 'info');
+            this.disconnectProfile(profile);
+            this.removeProfileTab(profile);
+        }
     }
 
     getCredentials() {

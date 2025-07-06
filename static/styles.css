@@ -630,10 +630,33 @@ div#rightPanel {
     background-color: rgba(25, 135, 84, 0.1) !important;
     color: var(--bs-success) !important;
     border-left: 3px solid var(--bs-success);
+    position: relative;
 }
 
 .profile-connect-btn.connected:hover {
     background-color: rgba(25, 135, 84, 0.2) !important;
+}
+
+.profile-connect-btn.connected::after {
+    content: 'Click to disconnect safely';
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 1000;
+}
+
+.profile-connect-btn.connected:hover::after {
+    opacity: 1;
 }
 
 /* Connecting state styling */
