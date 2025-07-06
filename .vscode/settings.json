@@ -23,7 +23,7 @@
 
   // Spell checker configuration
   "cSpell.enabled": true,
-  "cSpell.words": [],
+  "cSpell.words": ["tamasfe"],
   "cSpell.customDictionaries": {
     "workspace-dictionary": {
       "name": "workspace-dictionary",

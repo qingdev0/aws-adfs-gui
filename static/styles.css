@@ -191,14 +191,7 @@ div#rightPanel {
     opacity: 1;
 }
 
-.profile-list.expanded .collapse-icon {
-    transform: rotate(90deg);
-}
-
-/* Update collapse icon when expanded */
-.environment-header.expanded .collapse-icon {
-    transform: rotate(90deg);
-}
+/* Arrow icons are now controlled purely by JavaScript */
 
 .profile-name {
     font-weight: 500;

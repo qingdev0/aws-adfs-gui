@@ -148,6 +148,7 @@ region = us-west-2
         exists = credentials_mgr._profile_exists_in_config("nonexistent-profile")
         assert exists is False
 
+    @pytest.mark.asyncio
     @patch("aws_adfs_gui.aws_credentials.asyncio.create_subprocess_exec")
     async def test_test_aws_credentials_success(
         self, mock_subprocess: Mock, credentials_mgr: "AWSCredentialsManager"
@@ -172,6 +173,7 @@ region = us-west-2
         assert "Account" in output
         assert error == ""
 
+    @pytest.mark.asyncio
     @patch("aws_adfs_gui.aws_credentials.asyncio.create_subprocess_exec")
     async def test_test_aws_credentials_failure(
         self, mock_subprocess: Mock, credentials_mgr: "AWSCredentialsManager"
@@ -188,6 +190,7 @@ region = us-west-2
         assert success is False
         assert "ExpiredToken" in error
 
+    @pytest.mark.asyncio
     @patch("aws_adfs_gui.aws_credentials.asyncio.create_subprocess_exec")
     async def test_test_aws_credentials_timeout(
         self, mock_subprocess: Mock, credentials_mgr: "AWSCredentialsManager"
@@ -249,6 +252,7 @@ region = us-west-2
         assert "icon" in result
         assert "priority" in result
 
+    @pytest.mark.asyncio
     async def test_validate_profile_credentials_missing(self, credentials_mgr: "AWSCredentialsManager") -> None:
         """Test validation of missing profile credentials."""
         result = await credentials_mgr._validate_profile_credentials("nonexistent-profile")
@@ -384,6 +388,7 @@ class TestGlobalInstances:
 class TestIntegration:
     """Integration tests for AWS credentials functionality."""
 
+    @pytest.mark.asyncio
     async def test_full_validation_workflow(self) -> None:
         """Test complete credential validation workflow."""
         # This would be a more complex test that validates the entire workflow
