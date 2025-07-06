@@ -29,6 +29,13 @@ class AWSADFSApp {
         // Track connected profiles
         this.connectedProfiles = new Set();
 
+        // Track environment collapse state (default collapsed)
+        this.environmentCollapsed = {
+            'dev': true,
+            'np': true,
+            'pd': true
+        };
+
         this.init();
     }
 
@@ -37,6 +44,7 @@ class AWSADFSApp {
         this.setupEventListeners();
         this.loadSettings();
         this.setupWelcomePage();
+        this.loadEnvironmentCollapseState();
 
         // Validate credentials on startup
         this.validateCredentialsOnStartup();
@@ -444,6 +452,84 @@ class AWSADFSApp {
         } else if (['kds-ets-pd', 'kds-gps-pd', 'kds-iss-pd'].includes(profile)) {
             this.updatePdProfilesState();
         }
+    }
+
+    toggleEnvironmentCollapse(environment) {
+        const profileList = document.getElementById(`${environment}-profiles`);
+        const collapseIcon = document.getElementById(`${environment}-collapse-icon`);
+        const environmentHeader = collapseIcon?.closest('.environment-header');
+
+        if (!profileList || !collapseIcon) {
+            console.error(`Environment elements not found for: ${environment}`);
+            return;
+        }
+
+        // Toggle collapse state
+        this.environmentCollapsed[environment] = !this.environmentCollapsed[environment];
+
+        if (this.environmentCollapsed[environment]) {
+            // Collapse
+            profileList.classList.remove('expanded');
+            profileList.classList.add('collapsed');
+            collapseIcon.classList.remove('fa-chevron-down');
+            collapseIcon.classList.add('fa-chevron-right');
+            if (environmentHeader) {
+                environmentHeader.classList.remove('expanded');
+            }
+        } else {
+            // Expand
+            profileList.classList.remove('collapsed');
+            profileList.classList.add('expanded');
+            collapseIcon.classList.remove('fa-chevron-right');
+            collapseIcon.classList.add('fa-chevron-down');
+            if (environmentHeader) {
+                environmentHeader.classList.add('expanded');
+            }
+        }
+
+        // Save collapse state to localStorage
+        localStorage.setItem('environmentCollapsed', JSON.stringify(this.environmentCollapsed));
+    }
+
+    loadEnvironmentCollapseState() {
+        // Load saved collapse state from localStorage
+        const savedState = localStorage.getItem('environmentCollapsed');
+        if (savedState) {
+            try {
+                this.environmentCollapsed = JSON.parse(savedState);
+            } catch (e) {
+                console.warn('Failed to parse saved environment collapse state:', e);
+            }
+        }
+
+        // Apply the collapse state to the UI
+        Object.keys(this.environmentCollapsed).forEach(environment => {
+            const profileList = document.getElementById(`${environment}-profiles`);
+            const collapseIcon = document.getElementById(`${environment}-collapse-icon`);
+            const environmentHeader = collapseIcon?.closest('.environment-header');
+
+            if (profileList && collapseIcon) {
+                if (this.environmentCollapsed[environment]) {
+                    // Collapsed state
+                    profileList.classList.add('collapsed');
+                    profileList.classList.remove('expanded');
+                    collapseIcon.classList.add('fa-chevron-right');
+                    collapseIcon.classList.remove('fa-chevron-down');
+                    if (environmentHeader) {
+                        environmentHeader.classList.remove('expanded');
+                    }
+                } else {
+                    // Expanded state
+                    profileList.classList.remove('collapsed');
+                    profileList.classList.add('expanded');
+                    collapseIcon.classList.remove('fa-chevron-right');
+                    collapseIcon.classList.add('fa-chevron-down');
+                    if (environmentHeader) {
+                        environmentHeader.classList.add('expanded');
+                    }
+                }
+            }
+        });
     }
 
     connectProfile(profile) {

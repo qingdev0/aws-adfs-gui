@@ -93,8 +93,16 @@
           <!-- Development Profiles Section -->
           <div class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <div class="d-flex align-items-center">
+              <div
+                class="d-flex align-items-center flex-grow-1 environment-header"
+                onclick="app.toggleEnvironmentCollapse('dev')"
+                style="cursor: pointer"
+              >
                 <h6 class="text-primary mb-0 me-3">
+                  <i
+                    class="fas fa-chevron-right me-1 collapse-icon"
+                    id="dev-collapse-icon"
+                  ></i>
                   <i class="fas fa-rocket me-2"></i>
                   Development
                 </h6>
@@ -111,7 +119,7 @@
                 <i class="fas fa-rocket me-2"></i>Connect All
               </button>
             </div>
-            <div class="profile-list">
+            <div class="profile-list collapsed" id="dev-profiles">
               <div class="profile-item mb-2">
                 <button
                   class="btn btn-link profile-connect-btn w-100 text-start d-flex align-items-center"
@@ -150,8 +158,16 @@
           <!-- Non-Production Profiles Section -->
           <div class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <div class="d-flex align-items-center">
+              <div
+                class="d-flex align-items-center flex-grow-1 environment-header"
+                onclick="app.toggleEnvironmentCollapse('np')"
+                style="cursor: pointer"
+              >
                 <h6 class="text-warning mb-0 me-3">
+                  <i
+                    class="fas fa-chevron-right me-1 collapse-icon"
+                    id="np-collapse-icon"
+                  ></i>
                   <i class="fas fa-vial me-2"></i>
                   Non-Production
                 </h6>
@@ -168,7 +184,7 @@
                 <i class="fas fa-vial me-2"></i>Connect All
               </button>
             </div>
-            <div class="profile-list">
+            <div class="profile-list collapsed" id="np-profiles">
               <div class="profile-item mb-2">
                 <button
                   class="btn btn-link profile-connect-btn w-100 text-start d-flex align-items-center"
@@ -223,8 +239,16 @@
           <!-- Production Profiles Section -->
           <div class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <div class="d-flex align-items-center">
+              <div
+                class="d-flex align-items-center flex-grow-1 environment-header"
+                onclick="app.toggleEnvironmentCollapse('pd')"
+                style="cursor: pointer"
+              >
                 <h6 class="text-danger mb-0 me-3">
+                  <i
+                    class="fas fa-chevron-right me-1 collapse-icon"
+                    id="pd-collapse-icon"
+                  ></i>
                   <i class="fas fa-shield-alt me-2"></i>
                   Production
                 </h6>
@@ -241,7 +265,7 @@
                 <i class="fas fa-lock me-2"></i>Connect All
               </button>
             </div>
-            <div class="profile-list">
+            <div class="profile-list collapsed" id="pd-profiles">
               <div class="profile-item mb-2">
                 <button
                   class="btn btn-link profile-connect-btn w-100 text-start d-flex align-items-center"

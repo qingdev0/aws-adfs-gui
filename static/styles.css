@@ -154,6 +154,52 @@ div#rightPanel {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
+/* Environment Collapse Functionality */
+.environment-header {
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: -8px -12px;
+}
+
+.environment-header:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.collapse-icon {
+    transition: transform 0.3s ease;
+    color: #6c757d;
+}
+
+.profile-list {
+    max-height: 500px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    opacity: 1;
+}
+
+.profile-list.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.profile-list.expanded {
+    max-height: 500px;
+    opacity: 1;
+}
+
+.profile-list.expanded .collapse-icon {
+    transform: rotate(90deg);
+}
+
+/* Update collapse icon when expanded */
+.environment-header.expanded .collapse-icon {
+    transform: rotate(90deg);
+}
+
 .profile-name {
     font-weight: 500;
     color: #495057;
