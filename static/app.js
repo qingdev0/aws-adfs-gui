@@ -26,6 +26,9 @@ class AWSADFSApp {
         this.credentialsStatus = {};
         this.isValidatingCredentials = false;
 
+        // Track connected profiles
+        this.connectedProfiles = new Set();
+
         this.init();
     }
 
@@ -33,7 +36,6 @@ class AWSADFSApp {
         this.setupWebSocket();
         this.setupEventListeners();
         this.loadSettings();
-        this.setupPanelFunctionality();
         this.setupWelcomePage();
 
         // Validate credentials on startup
@@ -176,6 +178,102 @@ class AWSADFSApp {
                 this.handleError(message);
                 break;
         }
+    }
+
+    handleConnectionStatus(message) {
+        const { profile, status, error } = message;
+        const outputBodyElement = document.getElementById(`output-body-${profile}`);
+
+        if (status === 'connected') {
+            this.updateConnectionStatus(profile, 'connected');
+
+            // Update connection command output to show success
+            if (outputBodyElement) {
+                // Clear loading indicators
+                const loadingElements = outputBodyElement.querySelectorAll('.connection-command');
+                loadingElements.forEach(el => el.remove());
+
+                // Add success message
+                const successDiv = document.createElement('div');
+                successDiv.className = 'success mt-2';
+                successDiv.innerHTML = `<i class="fas fa-check-circle me-2"></i>Successfully connected to AWS profile: ${profile}`;
+                outputBodyElement.appendChild(successDiv);
+
+                // Add credential validation info
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'text-info mt-2';
+                infoDiv.innerHTML = `<i class="fas fa-key me-2"></i>AWS credentials validated and ready for use`;
+                outputBodyElement.appendChild(infoDiv);
+
+                // Add separator
+                const separator = document.createElement('div');
+                separator.className = 'border-top my-3';
+                outputBodyElement.appendChild(separator);
+
+                // Add ready message
+                const readyDiv = document.createElement('div');
+                readyDiv.className = 'text-muted';
+                readyDiv.innerHTML = '<i class="fas fa-terminal me-2"></i>Ready to execute AWS CLI commands...';
+                outputBodyElement.appendChild(readyDiv);
+
+                outputBodyElement.scrollTop = outputBodyElement.scrollHeight;
+            }
+        } else if (status === 'error') {
+            this.updateConnectionStatus(profile, 'disconnected');
+
+            // Update connection command output to show error
+            if (outputBodyElement) {
+                // Clear loading indicators
+                const loadingElements = outputBodyElement.querySelectorAll('.connection-command');
+                loadingElements.forEach(el => el.remove());
+
+                // Add error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error mt-2';
+                errorDiv.innerHTML = `<i class="fas fa-times-circle me-2"></i>Connection failed: ${error || 'Unknown error'}`;
+                outputBodyElement.appendChild(errorDiv);
+
+                // Add troubleshooting info
+                const helpDiv = document.createElement('div');
+                helpDiv.className = 'text-warning mt-2';
+                helpDiv.innerHTML = `<i class="fas fa-lightbulb me-2"></i>Check your ADFS credentials and network connection`;
+                outputBodyElement.appendChild(helpDiv);
+
+                outputBodyElement.scrollTop = outputBodyElement.scrollHeight;
+            }
+
+            this.showAlert(`Failed to connect to ${profile}: ${error || 'Unknown error'}`, 'error');
+        }
+    }
+
+    handleCommandOutput(message) {
+        const { profile, output, isError } = message;
+        this.updateCommandOutput(profile, output, isError);
+    }
+
+    handleCommandComplete(message) {
+        const { profile, success, duration } = message;
+        this.commandComplete(profile, success, duration);
+    }
+
+    handleCommandResult(message) {
+        const { profile, result } = message;
+        if (result.success) {
+            this.updateCommandOutput(profile, result.output, false);
+        } else {
+            this.updateCommandOutput(profile, result.error || 'Command failed', true);
+        }
+        this.commandComplete(profile, result.success, result.duration);
+    }
+
+    handleCommandError(message) {
+        const { profile, error } = message;
+        this.updateCommandOutput(profile, error, true);
+        this.commandComplete(profile, false, 0);
+    }
+
+    handleError(message) {
+        this.showAlert(message.error || 'An error occurred', 'error');
     }
 
     toggleDevProfiles() {
@@ -356,12 +454,20 @@ class AWSADFSApp {
             return;
         }
 
+        // Always create tab first so user can see what's happening
+        this.createProfileTab(profile);
+
         // Get credentials from settings
         const credentials = this.getCredentials();
         if (!credentials) {
+            // Show credentials needed message in the tab
+            this.showCredentialsNeeded(profile);
             this.showAlert('Please configure ADFS credentials in settings first', 'warning');
             return;
         }
+
+        // Show connection command in output
+        this.showConnectionCommand(profile, credentials);
 
         // Update status to connecting
         this.updateConnectionStatus(profile, 'connecting');
@@ -375,6 +481,131 @@ class AWSADFSApp {
                 credentials: credentials
             }));
         }
+    }
+
+    showCredentialsNeeded(profile) {
+        const outputElement = document.getElementById(`output-${profile}`);
+        if (!outputElement) return;
+
+        // Clear existing content and create new structure
+        outputElement.innerHTML = '';
+
+        // Create command header for credentials needed
+        const commandHeader = document.createElement('div');
+        commandHeader.className = 'command-header';
+
+        const commandIcon = document.createElement('i');
+        commandIcon.className = 'fas fa-exclamation-triangle command-icon';
+        commandIcon.style.color = '#ffc107';
+
+        const commandText = document.createElement('div');
+        commandText.className = 'command-text';
+        commandText.textContent = '⚠️ ADFS Credentials Required';
+        commandText.style.color = '#ffc107';
+
+        const commandTimestamp = document.createElement('div');
+        commandTimestamp.className = 'command-timestamp';
+        commandTimestamp.textContent = new Date().toLocaleTimeString();
+
+        commandHeader.appendChild(commandIcon);
+        commandHeader.appendChild(commandText);
+        commandHeader.appendChild(commandTimestamp);
+
+        // Create command body
+        const commandBody = document.createElement('div');
+        commandBody.className = 'command-body';
+        commandBody.id = `output-body-${profile}`;
+
+        // Add credentials setup instructions
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'text-warning mt-2';
+        warningDiv.innerHTML = `<i class="fas fa-info-circle me-2"></i><strong>Please configure your ADFS credentials first</strong>`;
+        commandBody.appendChild(warningDiv);
+
+        const step1Div = document.createElement('div');
+        step1Div.className = 'text-info mt-2';
+        step1Div.innerHTML = `<i class="fas fa-cog me-2"></i>1. Click the Settings button (gear icon) in the top-right`;
+        commandBody.appendChild(step1Div);
+
+        const step2Div = document.createElement('div');
+        step2Div.className = 'text-info mt-1';
+        step2Div.innerHTML = `<i class="fas fa-user me-2"></i>2. Enter your ADFS username, password, and server hostname`;
+        commandBody.appendChild(step2Div);
+
+        const step3Div = document.createElement('div');
+        step3Div.className = 'text-info mt-1';
+        step3Div.innerHTML = `<i class="fas fa-save me-2"></i>3. Click "Save Settings" and then try connecting again`;
+        commandBody.appendChild(step3Div);
+
+        const awsAdfsDiv = document.createElement('div');
+        awsAdfsDiv.className = 'connection-command mt-3';
+        awsAdfsDiv.innerHTML = `<i class="fas fa-terminal me-2"></i>Once configured, will execute: aws-adfs login --profile=${profile} --adfs-host=[your-host] --env --no-sspi`;
+        commandBody.appendChild(awsAdfsDiv);
+
+        outputElement.appendChild(commandHeader);
+        outputElement.appendChild(commandBody);
+    }
+
+        showConnectionCommand(profile, credentials) {
+        const outputElement = document.getElementById(`output-${profile}`);
+        if (!outputElement) return;
+
+        const adfsHost = credentials ? credentials.adfs_host : 'your-adfs-host.com';
+
+        // Build the actual aws-adfs command that will be executed
+        const awsAdfsCommand = `aws-adfs login --profile=${profile} --adfs-host=${adfsHost} --env --no-sspi`;
+
+        // Clear existing content and create new structure
+        outputElement.innerHTML = '';
+
+        // Create command header for connection
+        const commandHeader = document.createElement('div');
+        commandHeader.className = 'command-header';
+
+        const commandIcon = document.createElement('i');
+        commandIcon.className = 'fas fa-link command-icon';
+
+        const commandText = document.createElement('div');
+        commandText.className = 'command-text';
+        commandText.textContent = `$ ${awsAdfsCommand}`;
+
+        const commandTimestamp = document.createElement('div');
+        commandTimestamp.className = 'command-timestamp';
+        commandTimestamp.textContent = new Date().toLocaleTimeString();
+
+        commandHeader.appendChild(commandIcon);
+        commandHeader.appendChild(commandText);
+        commandHeader.appendChild(commandTimestamp);
+
+        // Create command body
+        const commandBody = document.createElement('div');
+        commandBody.className = 'command-body';
+        commandBody.id = `output-body-${profile}`;
+
+        // Add connection status with more detail
+        const connectingDiv = document.createElement('div');
+        connectingDiv.className = 'connection-command';
+        connectingDiv.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>Executing aws-adfs login command...`;
+        commandBody.appendChild(connectingDiv);
+
+        // Add step-by-step info
+        const step1Div = document.createElement('div');
+        step1Div.className = 'text-info mt-2';
+        step1Div.innerHTML = `<i class="fas fa-server me-2"></i>Connecting to ADFS server: ${adfsHost}`;
+        commandBody.appendChild(step1Div);
+
+        const step2Div = document.createElement('div');
+        step2Div.className = 'text-info mt-1';
+        step2Div.innerHTML = `<i class="fas fa-user-shield me-2"></i>Authenticating with provided credentials`;
+        commandBody.appendChild(step2Div);
+
+        const step3Div = document.createElement('div');
+        step3Div.className = 'text-info mt-1';
+        step3Div.innerHTML = `<i class="fas fa-key me-2"></i>Requesting AWS STS tokens for profile: ${profile}`;
+        commandBody.appendChild(step3Div);
+
+        outputElement.appendChild(commandHeader);
+        outputElement.appendChild(commandBody);
     }
 
     disconnectProfile(profile) {
@@ -459,6 +690,17 @@ class AWSADFSApp {
     }
 
     createProfileTab(profile) {
+        // Check if tab already exists
+        const existingTab = document.getElementById(`${profile}-tab`);
+        const existingContent = document.getElementById(profile);
+
+        if (existingTab && existingContent) {
+            // Tab already exists, just activate it
+            const tab = new bootstrap.Tab(existingTab);
+            tab.show();
+            return;
+        }
+
         const tabsContainer = document.getElementById('profileTabs');
         const contentContainer = document.getElementById('profileTabsContent');
 
@@ -506,7 +748,7 @@ class AWSADFSApp {
                 </div>
             </div>
             <div class="command-output" id="output-${profile}">
-                <div class="command-line">$ Ready for commands...</div>
+                <!-- Command structure will be populated dynamically -->
             </div>
         `;
 
@@ -624,20 +866,41 @@ class AWSADFSApp {
         const outputElement = document.getElementById(`output-${profile}`);
 
         if (outputElement) {
-            // Add command line to output
-            const commandLine = document.createElement('div');
-            commandLine.className = 'command-line';
-            commandLine.textContent = `$ ${command}`;
-            outputElement.appendChild(commandLine);
+            // Clear existing content and create new structure
+            outputElement.innerHTML = '';
 
-            // Add loading indicator
+            // Create command header
+            const commandHeader = document.createElement('div');
+            commandHeader.className = 'command-header';
+
+            const commandIcon = document.createElement('i');
+            commandIcon.className = 'fas fa-terminal command-icon';
+
+            const commandText = document.createElement('div');
+            commandText.className = 'command-text';
+            commandText.textContent = `$ ${command}`;
+
+            const commandTimestamp = document.createElement('div');
+            commandTimestamp.className = 'command-timestamp';
+            commandTimestamp.textContent = new Date().toLocaleTimeString();
+
+            commandHeader.appendChild(commandIcon);
+            commandHeader.appendChild(commandText);
+            commandHeader.appendChild(commandTimestamp);
+
+            // Create command body
+            const commandBody = document.createElement('div');
+            commandBody.className = 'command-body';
+            commandBody.id = `output-body-${profile}`;
+
+            // Add loading indicator to body
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'text-warning';
             loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Executing...';
-            outputElement.appendChild(loadingDiv);
+            commandBody.appendChild(loadingDiv);
 
-            // Scroll to bottom
-            outputElement.scrollTop = outputElement.scrollHeight;
+            outputElement.appendChild(commandHeader);
+            outputElement.appendChild(commandBody);
         }
 
         // Send command via WebSocket
@@ -651,11 +914,11 @@ class AWSADFSApp {
     }
 
     updateCommandOutput(profile, output, isError) {
-        const outputElement = document.getElementById(`output-${profile}`);
+        const outputBodyElement = document.getElementById(`output-body-${profile}`);
 
-        if (outputElement) {
+        if (outputBodyElement) {
             // Remove loading indicator
-            const loadingDiv = outputElement.querySelector('.text-warning');
+            const loadingDiv = outputBodyElement.querySelector('.text-warning');
             if (loadingDiv) {
                 loadingDiv.remove();
             }
@@ -664,17 +927,17 @@ class AWSADFSApp {
             const outputDiv = document.createElement('div');
             outputDiv.className = isError ? 'error' : 'success';
             outputDiv.textContent = output;
-            outputElement.appendChild(outputDiv);
+            outputBodyElement.appendChild(outputDiv);
 
             // Scroll to bottom
-            outputElement.scrollTop = outputElement.scrollHeight;
+            outputBodyElement.scrollTop = outputBodyElement.scrollHeight;
         }
     }
 
     commandComplete(profile, success, duration) {
-        const outputElement = document.getElementById(`output-${profile}`);
+        const outputBodyElement = document.getElementById(`output-body-${profile}`);
 
-        if (outputElement) {
+        if (outputBodyElement) {
             // Add completion status
             const statusDiv = document.createElement('div');
             statusDiv.className = `mt-2 ${success ? 'success' : 'error'}`;
@@ -682,15 +945,15 @@ class AWSADFSApp {
                 <i class="fas fa-${success ? 'check' : 'times'} me-2"></i>
                 ${success ? 'Success' : 'Failed'} - Duration: ${duration}s
             `;
-            outputElement.appendChild(statusDiv);
+            outputBodyElement.appendChild(statusDiv);
 
             // Add separator
             const separator = document.createElement('div');
             separator.className = 'border-top my-3';
-            outputElement.appendChild(separator);
+            outputBodyElement.appendChild(separator);
 
             // Scroll to bottom
-            outputElement.scrollTop = outputElement.scrollHeight;
+            outputBodyElement.scrollTop = outputBodyElement.scrollHeight;
         }
     }
 
@@ -956,7 +1219,36 @@ class AWSADFSApp {
     clearResults(profile) {
         const outputElement = document.getElementById(`output-${profile}`);
         if (outputElement) {
-            outputElement.innerHTML = '<div class="command-line">$ Ready for commands...</div>';
+            // Create the default empty state with command header
+            outputElement.innerHTML = '';
+
+            // Create command header for ready state
+            const commandHeader = document.createElement('div');
+            commandHeader.className = 'command-header';
+
+            const commandIcon = document.createElement('i');
+            commandIcon.className = 'fas fa-terminal command-icon';
+
+            const commandText = document.createElement('div');
+            commandText.className = 'command-text';
+            commandText.textContent = '$ Ready for commands...';
+
+            const commandTimestamp = document.createElement('div');
+            commandTimestamp.className = 'command-timestamp';
+            commandTimestamp.textContent = new Date().toLocaleTimeString();
+
+            commandHeader.appendChild(commandIcon);
+            commandHeader.appendChild(commandText);
+            commandHeader.appendChild(commandTimestamp);
+
+            // Create empty command body
+            const commandBody = document.createElement('div');
+            commandBody.className = 'command-body';
+            commandBody.id = `output-body-${profile}`;
+            commandBody.innerHTML = '<div class="text-muted">Execute commands to see output here...</div>';
+
+            outputElement.appendChild(commandHeader);
+            outputElement.appendChild(commandBody);
         }
     }
 

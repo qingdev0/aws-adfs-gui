@@ -274,13 +274,70 @@ div#rightPanel {
     background-color: #1e1e1e;
     color: #d4d4d4;
     font-family: 'Courier New', monospace;
-    padding: 15px;
+    padding: 0;
     border-radius: 8px;
     max-height: 500px;
-    overflow-y: auto;
+    overflow: hidden;
     border: 1px solid #333;
     white-space: pre-wrap;
     word-wrap: break-word;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Command header at the top */
+.command-header {
+    background: linear-gradient(135deg, #2d3142 0%, #4f5b66 100%);
+    color: #00ff41;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    padding: 12px 15px;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 2px solid #00ff41;
+    font-size: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 255, 65, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 45px;
+}
+
+.command-header .command-icon {
+    color: #00ff41;
+    font-size: 16px;
+    text-shadow: 0 0 10px currentColor;
+    animation: pulse-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-glow {
+    from { text-shadow: 0 0 5px currentColor; }
+    to { text-shadow: 0 0 15px currentColor, 0 0 20px currentColor; }
+}
+
+.command-header .command-text {
+    flex: 1;
+    font-family: 'Courier New', monospace;
+    color: #00ff41;
+    font-weight: bold;
+    word-break: break-all;
+}
+
+.command-header .command-timestamp {
+    color: #8892b0;
+    font-size: 11px;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+/* Command body with scroll */
+.command-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    max-height: 455px;
 }
 
 .command-output .command-line {
@@ -299,6 +356,26 @@ div#rightPanel {
 
 .command-output .warning {
     color: #ffcc02;
+}
+
+/* Enhanced connection command display */
+.connection-command {
+    background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
+    color: #64b5f6;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin: 8px 0;
+    border-left: 4px solid #64b5f6;
+    font-size: 12px;
+    word-break: break-all;
+    box-shadow: 0 2px 4px rgba(100, 181, 246, 0.2);
+}
+
+.connection-command::before {
+    content: "🔗 ";
+    margin-right: 8px;
 }
 
 /* Welcome Screen */
