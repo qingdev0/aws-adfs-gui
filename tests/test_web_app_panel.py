@@ -1,9 +1,8 @@
 """Tests for web application panel functionality and static file serving."""
 
 import pytest
-from fastapi.testclient import TestClient
-
 from aws_adfs_gui.web_app import app
+from fastapi.testclient import TestClient
 
 
 class TestWebAppPanelFunctionality:

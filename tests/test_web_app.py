@@ -23,9 +23,8 @@ except ImportError:
 
 # Import FastAPI and TestClient after ensuring they're available
 try:
-    from fastapi.testclient import TestClient
-
     from aws_adfs_gui.web_app import app
+    from fastapi.testclient import TestClient
 
     FASTAPI_AVAILABLE = True
 except ImportError:

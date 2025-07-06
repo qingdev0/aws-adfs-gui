@@ -1551,143 +1551,142 @@ class AWSADFSApp {
         this.checkWelcomeDisplay();
     }
 
-    setupWelcomeEventListeners() {
-        // Close button
-        const closeBtn = document.getElementById('welcome-close-btn');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                this.closeWelcome();
-            });
-        }
+            setupWelcomeEventListeners() {
+        console.log('Setting up welcome page event listeners');
 
-        // Got it button
-        const gotItBtn = document.getElementById('welcome-got-it-btn');
-        if (gotItBtn) {
-            gotItBtn.addEventListener('click', () => {
-                this.closeWelcome();
-            });
-        }
-
-        // Show welcome again button
-        const showAgainBtn = document.getElementById('show-welcome-btn');
-        if (showAgainBtn) {
-            showAgainBtn.addEventListener('click', () => {
-                this.showWelcome();
-            });
-        }
-
-        // ESC key to close modal
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                const welcomeModal = document.getElementById('welcome-modal');
-                if (welcomeModal && welcomeModal.classList.contains('show')) {
-                    this.closeWelcome();
-                }
-            }
-        });
-
-        // Click outside to close modal
+        // Use Bootstrap's built-in modal events for reliable handling
         const welcomeModal = document.getElementById('welcome-modal');
         if (welcomeModal) {
-            welcomeModal.addEventListener('click', (e) => {
-                if (e.target === welcomeModal) {
-                    this.closeWelcome();
-                }
-            });
-        }
-    }
+            // Listen for when the modal is hidden
+                        welcomeModal.addEventListener('hidden.bs.modal', () => {
+                console.log('Modal hidden event fired');
 
-    checkWelcomeDisplay() {
-        // Check localStorage to see if welcome was dismissed
-        const welcomeDismissed = localStorage.getItem('welcomeDismissed');
-        const dontShowAgain = localStorage.getItem('welcomeDontShowAgain');
-
-        // Show welcome if it hasn't been dismissed or if "don't show again" is not set
-        if (!welcomeDismissed || dontShowAgain !== 'true') {
-            // Add a small delay to ensure DOM is fully loaded
-            setTimeout(() => {
-                this.showWelcome();
-            }, 1000);
-        }
-    }
-
-    showWelcome() {
-        const welcomeModal = document.getElementById('welcome-modal');
-        if (welcomeModal) {
-            const modal = new bootstrap.Modal(welcomeModal, {
-                backdrop: 'static', // Prevent closing by clicking backdrop
-                keyboard: true,     // Allow ESC key to close
-                focus: true         // Focus management
+                // Return focus to help button
+                setTimeout(() => {
+                    const helpBtn = document.getElementById('helpBtn');
+                    if (helpBtn) {
+                        helpBtn.focus();
+                    }
+                }, 300);
             });
 
-            modal.show();
-
-            // Focus management - focus the close button for accessibility
+            // Listen for when modal is shown for accessibility
             welcomeModal.addEventListener('shown.bs.modal', () => {
+                console.log('Welcome modal shown');
                 const closeBtn = document.getElementById('welcome-close-btn');
                 if (closeBtn) {
                     closeBtn.focus();
                 }
             });
         }
+
+        // Handle the main Help button click
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'helpBtn') {
+                e.preventDefault();
+                console.log('Help button clicked - showing help modal');
+                this.showWelcome();
+            }
+        });
     }
 
-    closeWelcome() {
+                checkWelcomeDisplay() {
+        // Since this is now a help page accessed via Help button,
+        // we don't auto-display it on page load
+        console.log('Help page is now manually accessed via Help button - no auto-display');
+    }
+
+                showWelcome() {
+        console.log('showWelcome called');
         const welcomeModal = document.getElementById('welcome-modal');
-        const dontShowAgainCheck = document.getElementById('dontShowAgain');
+        if (welcomeModal) {
+            console.log('Welcome modal found, showing modal');
+
+            // Get or create Bootstrap modal instance
+            let modal = bootstrap.Modal.getInstance(welcomeModal);
+            if (!modal) {
+                modal = new bootstrap.Modal(welcomeModal, {
+                    backdrop: true,     // Allow closing by clicking backdrop
+                    keyboard: true      // Allow ESC key to close
+                });
+            }
+
+            console.log('Showing welcome modal');
+            modal.show();
+        } else {
+            console.error('Welcome modal element not found in DOM');
+        }
+    }
+
+                closeWelcome() {
+        console.log('closeWelcome called');
+        const welcomeModal = document.getElementById('welcome-modal');
 
         if (welcomeModal) {
             const modal = bootstrap.Modal.getInstance(welcomeModal);
             if (modal) {
+                console.log('Hiding modal via Bootstrap API');
                 modal.hide();
+            } else {
+                console.log('No modal instance found');
             }
-
-            // Save dismissal to localStorage
-            localStorage.setItem('welcomeDismissed', 'true');
-            localStorage.setItem('welcomeDismissedAt', Date.now().toString());
-
-            // Check if "don't show again" was selected
-            if (dontShowAgainCheck && dontShowAgainCheck.checked) {
-                localStorage.setItem('welcomeDontShowAgain', 'true');
-            }
-
-            // Focus management - return focus to help button
-            const helpBtn = document.getElementById('helpBtn');
-            if (helpBtn) {
-                helpBtn.focus();
-            }
+        } else {
+            console.log('Welcome modal not found');
         }
     }
 
-    resetWelcomePreferences() {
-        // Method to reset welcome preferences (useful for testing)
-        localStorage.removeItem('welcomeDismissed');
-        localStorage.removeItem('welcomeDismissedAt');
-        localStorage.removeItem('welcomeDontShowAgain');
+            resetWelcomePreferences() {
+        // Method is no longer needed since help page has no persistent preferences
+        console.log('Help page has no preferences to reset - access via Help button anytime');
+    }
 
-        // Uncheck the "don't show again" checkbox
-        const dontShowAgainCheck = document.getElementById('dontShowAgain');
-        if (dontShowAgainCheck) {
-            dontShowAgainCheck.checked = false;
+    // Debug function to test welcome functionality
+        debugWelcome() {
+        console.log('=== Welcome Debug Info ===');
+
+        const modal = document.getElementById('welcome-modal');
+        const closeBtn = document.getElementById('welcome-close-btn');
+        const gotItBtn = document.getElementById('welcome-got-it-btn');
+        const helpBtn = document.getElementById('helpBtn');
+
+        console.log('Modal element:', !!modal);
+        console.log('Close button:', !!closeBtn);
+        console.log('Got it button:', !!gotItBtn);
+        console.log('Help button:', !!helpBtn);
+
+        if (modal) {
+            console.log('Modal classes:', modal.className);
+            console.log('Modal display:', getComputedStyle(modal).display);
+            console.log('Modal instance:', !!bootstrap.Modal.getInstance(modal));
+        }
+
+        if (closeBtn) {
+            console.log('Close button clickable:', closeBtn.style.pointerEvents !== 'none');
+        }
+
+        if (gotItBtn) {
+            console.log('Got it button clickable:', gotItBtn.style.pointerEvents !== 'none');
+        }
+
+        // Test clicking buttons programmatically
+        console.log('Testing programmatic clicks...');
+        if (closeBtn) {
+            console.log('Triggering close button click');
+            closeBtn.click();
         }
     }
 
     getWelcomeStatus() {
-        // Method to get current welcome status (useful for debugging)
+        // Help page is now accessed manually via Help button
         return {
-            dismissed: localStorage.getItem('welcomeDismissed'),
-            dismissedAt: localStorage.getItem('welcomeDismissedAt'),
-            dontShowAgain: localStorage.getItem('welcomeDontShowAgain'),
-            shouldShow: this.shouldShowWelcome()
+            note: 'Help page is manually accessed - no persistent status needed',
+            available: true
         };
     }
 
     shouldShowWelcome() {
-        // Check if welcome should be shown based on current settings
-        const welcomeDismissed = localStorage.getItem('welcomeDismissed');
-        const dontShowAgain = localStorage.getItem('welcomeDontShowAgain');
-
-        return !welcomeDismissed || dontShowAgain !== 'true';
+        // Help page is manually accessed, so it should always be available when requested
+        return true;
     }
 }
 

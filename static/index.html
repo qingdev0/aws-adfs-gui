@@ -686,19 +686,19 @@
       aria-describedby="welcomeModalDescription"
       aria-modal="true"
       role="dialog"
-      data-bs-backdrop="static"
     >
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
             <h4 class="modal-title" id="welcomeModalTitle">
-              <i class="fas fa-hand-wave me-2"></i>
-              Welcome to AWS ADFS GUI!
+              <i class="fas fa-question-circle me-2"></i>
+              AWS ADFS GUI - Help & Guide
             </h4>
             <button
               type="button"
               class="btn-close btn-close-white"
               id="welcome-close-btn"
+              data-bs-dismiss="modal"
               aria-label="Close welcome dialog"
               tabindex="0"
             ></button>
@@ -706,9 +706,9 @@
           <div class="modal-body" id="welcome-content">
             <div id="welcomeModalDescription" class="mb-4">
               <p class="lead">
-                <i class="fas fa-cloud-arrow-up text-primary me-2"></i>
-                Your comprehensive AWS CLI interface with ADFS authentication
-                integration.
+                <i class="fas fa-info-circle text-primary me-2"></i>
+                Complete guide to using your AWS CLI interface with ADFS
+                authentication.
               </p>
             </div>
 
@@ -875,37 +875,16 @@
             </div>
           </div>
           <div class="modal-footer bg-light">
-            <div
-              class="d-flex justify-content-between w-100 align-items-center"
-            >
-              <div class="form-check">
-                <input
-                  class="form-check-input"
-                  type="checkbox"
-                  id="dontShowAgain"
-                />
-                <label class="form-check-label text-muted" for="dontShowAgain">
-                  Don't show this again
-                </label>
-              </div>
-              <div>
-                <button
-                  type="button"
-                  class="btn btn-outline-secondary me-2"
-                  id="show-welcome-btn"
-                >
-                  <i class="fas fa-question-circle me-1"></i>
-                  Show Help Again
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-primary"
-                  id="welcome-got-it-btn"
-                >
-                  <i class="fas fa-check me-1"></i>
-                  Got it, let's start!
-                </button>
-              </div>
+            <div class="d-flex justify-content-end w-100">
+              <button
+                type="button"
+                class="btn btn-primary"
+                id="welcome-got-it-btn"
+                data-bs-dismiss="modal"
+              >
+                <i class="fas fa-rocket me-1"></i>
+                Let's Rock & Roll!
+              </button>
             </div>
           </div>
         </div>
