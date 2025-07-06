@@ -19,9 +19,14 @@ from .models import (
     AWSProfile,
     CommandRequest,
     CommandResult,
+    ConfigResponse,
+    ConfigSaveRequest,
     ConnectionSettings,
+    CredentialsTestRequest,
+    CredentialsTestResponse,
     ExportRequest,
 )
+from .secure_config import secure_config_manager
 
 app = FastAPI(
     title="AWS ADFS GUI",
@@ -125,15 +130,34 @@ class ConnectionManager:
                 )
                 return
 
-            # If credentials provided, attempt authentication
+            # Handle credentials
             if credentials:
                 try:
-                    adfs_creds = ADFSCredentials(
-                        username=credentials.get("username", ""),
-                        password=credentials.get("password", ""),
-                        adfs_host=credentials.get("adfs_host", ""),
-                        certificate_path=credentials.get("certificate_path"),
-                    )
+                    # Check if we should use stored credentials
+                    if credentials.get("use_stored", False):
+                        # Load stored credentials
+                        stored_creds = secure_config_manager.load_credentials()
+                        if not stored_creds:
+                            await self.send_personal_message(
+                                {
+                                    "type": "connection_status",
+                                    "profile": profile,
+                                    "status": "disconnected",
+                                    "message": "No stored credentials found",
+                                },
+                                websocket,
+                            )
+                            return
+
+                        adfs_creds = stored_creds
+                    else:
+                        # Use provided credentials
+                        adfs_creds = ADFSCredentials(
+                            username=credentials.get("username", ""),
+                            password=credentials.get("password", ""),
+                            adfs_host=credentials.get("adfs_host", ""),
+                            certificate_path=credentials.get("certificate_path"),
+                        )
 
                     settings = ConnectionSettings(
                         timeout=credentials.get("timeout", 30),
@@ -349,7 +373,7 @@ async def get_credentials_status() -> dict:
     try:
         return credentials_manager.get_all_status()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get credentials status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get credentials status: {str(e)}") from e
 
 
 @app.get("/api/credentials/status/{profile_name}")
@@ -358,7 +382,7 @@ async def get_profile_credentials_status(profile_name: str) -> dict:
     try:
         return credentials_manager.get_profile_status(profile_name)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get status for {profile_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get status for {profile_name}: {str(e)}") from e
 
 
 @app.post("/api/credentials/validate")
@@ -375,7 +399,7 @@ async def validate_all_credentials() -> dict:
 
         return {"status": "completed", "profiles": status_results, "summary": credentials_manager.get_status_summary()}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}") from e
 
 
 @app.post("/api/credentials/validate/{profile_name}")
@@ -389,7 +413,7 @@ async def validate_profile_credentials(profile_name: str) -> dict:
         results = await credentials_manager.validate_all_profiles([profile])
         return results.get(profile_name, {})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Validation failed for {profile_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Validation failed for {profile_name}: {str(e)}") from e
 
 
 @app.get("/api/credentials/summary")
@@ -403,18 +427,149 @@ async def get_credentials_summary() -> dict:
             "last_updated": credentials_manager.profile_status.get("last_global_update", None),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get summary: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get summary: {str(e)}") from e
 
 
 @app.post("/api/commands/build-aws-adfs")
 async def build_aws_adfs_command(profile_name: str, adfs_host: str, options: dict | None = None) -> dict:
-    """Build a flexible aws-adfs command with custom options."""
+    """Build aws-adfs command for a specific profile."""
     try:
-        command_options = options or {}
-        cmd = command_builder.build_aws_adfs_command(profile_name, adfs_host, **command_options)
-        return {"command": cmd, "command_string": " ".join(cmd), "profile": profile_name, "options": command_options}
+        command = command_builder.build_aws_adfs_command(profile_name, adfs_host, **(options or {}))
+        return {"success": True, "command": command}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Command building failed: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
+# Configuration API endpoints
+@app.get("/api/config")
+async def get_config() -> ConfigResponse:
+    """Get current configuration."""
+    try:
+        return ConfigResponse(
+            has_credentials=secure_config_manager.has_credentials(),
+            credentials_valid=secure_config_manager.test_credentials(),
+            connection_settings=secure_config_manager.get_connection_settings(),
+            ui_settings=secure_config_manager.get_ui_settings(),
+            config_info=secure_config_manager.get_config_info(),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading configuration: {str(e)}") from e
+
+
+@app.post("/api/config/save")
+async def save_config(request: ConfigSaveRequest) -> dict:
+    """Save configuration."""
+    try:
+        success = True
+        messages = []
+
+        # Save credentials if provided and requested
+        if request.credentials and request.save_credentials:
+            if secure_config_manager.save_credentials(request.credentials):
+                messages.append("Credentials saved securely")
+            else:
+                success = False
+                messages.append("Failed to save credentials")
+        elif not request.save_credentials:
+            # Delete credentials if user doesn't want to save them
+            secure_config_manager.delete_credentials()
+            messages.append("Credentials removed")
+
+        # Save connection settings if provided
+        if request.connection_settings:
+            if secure_config_manager.save_connection_settings(request.connection_settings):
+                messages.append("Connection settings saved")
+            else:
+                success = False
+                messages.append("Failed to save connection settings")
+
+        # Save UI settings if provided
+        if request.ui_settings:
+            if secure_config_manager.save_ui_settings(request.ui_settings):
+                messages.append("UI settings saved")
+            else:
+                success = False
+                messages.append("Failed to save UI settings")
+
+        return {
+            "success": success,
+            "message": "; ".join(messages) if messages else "No changes made",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving configuration: {str(e)}") from e
+
+
+@app.get("/api/config/credentials")
+async def get_credentials() -> dict:
+    """Get stored credentials (without password)."""
+    try:
+        credentials = secure_config_manager.load_credentials()
+        if credentials:
+            return {
+                "has_credentials": True,
+                "username": credentials.username,
+                "adfs_host": credentials.adfs_host,
+                "certificate_path": credentials.certificate_path,
+            }
+        else:
+            return {"has_credentials": False}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading credentials: {str(e)}") from e
+
+
+@app.delete("/api/config/credentials")
+async def delete_credentials() -> dict:
+    """Delete stored credentials."""
+    try:
+        if secure_config_manager.delete_credentials():
+            return {"success": True, "message": "Credentials deleted successfully"}
+        else:
+            return {"success": False, "message": "Failed to delete credentials"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting credentials: {str(e)}") from e
+
+
+@app.post("/api/config/test-credentials")
+async def test_stored_credentials() -> CredentialsTestResponse:
+    """Test stored credentials."""
+    try:
+        credentials = secure_config_manager.load_credentials()
+        if not credentials:
+            return CredentialsTestResponse(success=False, message="No credentials stored")
+
+        # Test credentials using the authenticator
+        success, message = await authenticator.test_credentials(credentials)
+        return CredentialsTestResponse(success=success, message=message)
+    except Exception as e:
+        return CredentialsTestResponse(success=False, message=f"Error testing credentials: {str(e)}")
+
+
+@app.post("/api/config/test-new-credentials")
+async def test_new_credentials(request: CredentialsTestRequest) -> CredentialsTestResponse:
+    """Test new credentials without saving them."""
+    try:
+        from pydantic import SecretStr
+
+        credentials = ADFSCredentials(
+            username=request.username,
+            password=SecretStr(request.password),
+            adfs_host=request.adfs_host,
+        )
+
+        # Test credentials using the authenticator
+        success, message = await authenticator.test_credentials(credentials)
+        return CredentialsTestResponse(success=success, message=message)
+    except Exception as e:
+        return CredentialsTestResponse(success=False, message=f"Error testing credentials: {str(e)}")
+
+
+@app.get("/api/config/info")
+async def get_config_info() -> dict:
+    """Get configuration information."""
+    try:
+        return secure_config_manager.get_config_info()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting config info: {str(e)}") from e
 
 
 @app.websocket("/ws")
@@ -544,7 +699,7 @@ async def export_results(export_request: ExportRequest, results: list[CommandRes
         return {"success": True, "data": exported_data}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}") from e
 
 
 def run_app(host: str = "127.0.0.1", port: int = 8000, reload: bool = True) -> None:

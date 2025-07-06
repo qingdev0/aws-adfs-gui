@@ -532,7 +532,7 @@ class AWSADFSApp {
         });
     }
 
-    connectProfile(profile) {
+    async connectProfile(profile) {
         // Check if already connected
         if (this.connectedProfiles.has(profile)) {
             // If connected, show safe disconnect dialog
@@ -544,7 +544,7 @@ class AWSADFSApp {
         this.createProfileTab(profile);
 
         // Get credentials from settings
-        const credentials = this.getCredentials();
+        const credentials = await this.getCredentials();
         if (!credentials) {
             // Show credentials needed message in the tab
             this.showCredentialsNeeded(profile);
@@ -561,10 +561,23 @@ class AWSADFSApp {
 
         // Send connection request via WebSocket with credentials
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            // Prepare credentials for WebSocket
+            const wsCredentials = {
+                username: credentials.username,
+                password: credentials.use_stored ? null : credentials.password, // Don't send password if using stored
+                adfs_host: credentials.adfs_host,
+                certificate_path: credentials.certificate_path,
+                timeout: credentials.timeout,
+                retries: credentials.retries,
+                no_sspi: credentials.no_sspi,
+                env_mode: credentials.env_mode,
+                use_stored: credentials.use_stored || false
+            };
+
             this.ws.send(JSON.stringify({
                 type: 'connect_profile',
                 profile: profile,
-                credentials: credentials
+                credentials: wsCredentials
             }));
         }
     }
@@ -897,27 +910,36 @@ class AWSADFSApp {
         }
     }
 
-    getCredentials() {
-        // Check if credentials are saved and user wants to use them
-        const savedCredentials = localStorage.getItem('awsAdfsCredentials');
-        const settings = JSON.parse(localStorage.getItem('awsAdfsSettings') || '{}');
+    async getCredentials() {
+        try {
+            // First check if we have stored credentials
+            const credResponse = await fetch('/api/config/credentials');
+            const stored = await credResponse.json();
 
-        if (savedCredentials && settings.saveCredentials) {
-            try {
-                const credentials = JSON.parse(atob(savedCredentials));
-                // Add current settings
-                credentials.timeout = settings.timeout || 30;
-                credentials.retries = settings.retries || 3;
-                credentials.no_sspi = settings.noSspi !== false;
-                credentials.env_mode = settings.envMode !== false;
-                return credentials;
-            } catch (e) {
-                console.warn('Failed to load saved credentials');
-                localStorage.removeItem('awsAdfsCredentials');
+            if (credResponse.ok && stored.has_credentials) {
+                // Load stored credentials
+                const configResponse = await fetch('/api/config');
+                const config = await configResponse.json();
+
+                if (configResponse.ok && config.credentials_valid) {
+                    return {
+                        username: stored.username,
+                        password: '***STORED***', // Placeholder - password will be loaded from secure storage
+                        adfs_host: stored.adfs_host,
+                        certificate_path: stored.certificate_path,
+                        timeout: config.connection_settings.timeout || 30,
+                        retries: config.connection_settings.retries || 3,
+                        no_sspi: config.connection_settings.no_sspi !== false,
+                        env_mode: config.connection_settings.env_mode !== false,
+                        use_stored: true
+                    };
+                }
             }
+        } catch (error) {
+            console.warn('Failed to load stored credentials:', error);
         }
 
-        // Try to get credentials from current form values
+        // Fall back to form values
         const username = document.getElementById('adfsUsername')?.value;
         const password = document.getElementById('adfsPassword')?.value;
         const adfsHost = document.getElementById('adfsHost')?.value;
@@ -927,10 +949,11 @@ class AWSADFSApp {
                 username: username,
                 password: password,
                 adfs_host: adfsHost,
-                timeout: settings.timeout || 30,
-                retries: settings.retries || 3,
-                no_sspi: settings.noSspi !== false,
-                env_mode: settings.envMode !== false
+                timeout: 30,
+                retries: 3,
+                no_sspi: true,
+                env_mode: true,
+                use_stored: false
             };
         }
 
@@ -1161,7 +1184,7 @@ class AWSADFSApp {
         testButton.disabled = true;
 
         try {
-            const response = await fetch('/api/auth/test', {
+            const response = await fetch('/api/config/test-new-credentials', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1190,89 +1213,109 @@ class AWSADFSApp {
         }
     }
 
-    saveSettings() {
+    async saveSettings() {
         const settings = {
             // Connection settings
-            timeout: document.getElementById('timeoutSetting').value,
-            retries: document.getElementById('retriesSetting').value,
-            noSspi: document.getElementById('noSspi').checked,
-            envMode: document.getElementById('envMode').checked,
+            timeout: parseInt(document.getElementById('timeoutSetting').value),
+            retries: parseInt(document.getElementById('retriesSetting').value),
+            no_sspi: document.getElementById('noSspi').checked,
+            env_mode: document.getElementById('envMode').checked,
+        };
 
+        const ui_settings = {
             // Export settings
-            exportFormat: document.getElementById('exportFormat').value,
-            includeTimestamps: document.getElementById('includeTimestamps').checked,
-            excludeCredentials: document.getElementById('excludeCredentials').checked,
-            compressExports: document.getElementById('compressExports').checked,
+            export_format: document.getElementById('exportFormat').value,
+            include_timestamps: document.getElementById('includeTimestamps').checked,
+            exclude_credentials: document.getElementById('excludeCredentials').checked,
+            compress_exports: document.getElementById('compressExports').checked,
+        };
 
-            // Credential settings (only save if user wants to)
-            saveCredentials: document.getElementById('saveCredentials').checked
+        // Prepare save request
+        const saveRequest = {
+            save_credentials: document.getElementById('saveCredentials').checked,
+            connection_settings: settings,
+            ui_settings: ui_settings
         };
 
         // Handle credentials securely
-        if (settings.saveCredentials) {
+        if (saveRequest.save_credentials) {
             const credentials = {
                 username: document.getElementById('adfsUsername').value,
                 password: document.getElementById('adfsPassword').value,
-                adfsHost: document.getElementById('adfsHost').value
+                adfs_host: document.getElementById('adfsHost').value,
+                certificate_path: document.getElementById('certificateFile').files[0]?.path || null
             };
 
             // Only save if all required fields are filled
-            if (credentials.username && credentials.password && credentials.adfsHost) {
-                // In a real implementation, these should be encrypted
-                // For now, we'll encode them (NOT secure for production)
-                const encodedCredentials = btoa(JSON.stringify(credentials));
-                localStorage.setItem('awsAdfsCredentials', encodedCredentials);
-                settings.hasCredentials = true;
+            if (credentials.username && credentials.password && credentials.adfs_host) {
+                saveRequest.credentials = credentials;
             } else {
                 this.showAlert('Please fill in all credential fields', 'warning');
                 return;
             }
-        } else {
-            // Clear saved credentials if user doesn't want to save them
-            localStorage.removeItem('awsAdfsCredentials');
-            settings.hasCredentials = false;
         }
 
-        localStorage.setItem('awsAdfsSettings', JSON.stringify(settings));
+        try {
+            const response = await fetch('/api/config/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(saveRequest)
+            });
 
-        this.showAlert('Settings saved successfully', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
+            const result = await response.json();
+
+            if (result.success) {
+                this.showAlert('✅ Settings saved successfully!', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
+            } else {
+                this.showAlert(`❌ Save failed: ${result.message}`, 'error');
+            }
+
+        } catch (error) {
+            this.showAlert(`❌ Save failed: ${error.message}`, 'error');
+        }
     }
 
-    loadSettings() {
-        const saved = localStorage.getItem('awsAdfsSettings');
-        if (saved) {
-            const settings = JSON.parse(saved);
+    async loadSettings() {
+        try {
+            // Load main configuration
+            const configResponse = await fetch('/api/config');
+            const config = await configResponse.json();
 
-            // Connection settings
-            document.getElementById('timeoutSetting').value = settings.timeout || 30;
-            document.getElementById('retriesSetting').value = settings.retries || 3;
-            document.getElementById('noSspi').checked = settings.noSspi !== false;
-            document.getElementById('envMode').checked = settings.envMode !== false;
+            if (configResponse.ok) {
+                // Load connection settings
+                const connSettings = config.connection_settings;
+                document.getElementById('timeoutSetting').value = connSettings.timeout || 30;
+                document.getElementById('retriesSetting').value = connSettings.retries || 3;
+                document.getElementById('noSspi').checked = connSettings.no_sspi !== false;
+                document.getElementById('envMode').checked = connSettings.env_mode !== false;
 
-            // Export settings
-            document.getElementById('exportFormat').value = settings.exportFormat || 'json';
-            document.getElementById('includeTimestamps').checked = settings.includeTimestamps !== false;
-            document.getElementById('excludeCredentials').checked = settings.excludeCredentials !== false;
-            document.getElementById('compressExports').checked = settings.compressExports || false;
+                // Load UI settings
+                const uiSettings = config.ui_settings;
+                document.getElementById('exportFormat').value = uiSettings.export_format || 'json';
+                document.getElementById('includeTimestamps').checked = uiSettings.include_timestamps !== false;
+                document.getElementById('excludeCredentials').checked = uiSettings.exclude_credentials !== false;
+                document.getElementById('compressExports').checked = uiSettings.compress_exports || false;
 
-            // Credential settings
-            document.getElementById('saveCredentials').checked = settings.saveCredentials !== false;
-        }
+                // Load credentials status
+                document.getElementById('saveCredentials').checked = config.has_credentials;
 
-        // Load credentials if they exist and user wants to save them
-        const savedCredentials = localStorage.getItem('awsAdfsCredentials');
-        if (savedCredentials && document.getElementById('saveCredentials').checked) {
-            try {
-                // Decode credentials (NOT secure for production)
-                const credentials = JSON.parse(atob(savedCredentials));
-                document.getElementById('adfsUsername').value = credentials.username || '';
-                document.getElementById('adfsHost').value = credentials.adfsHost || '';
-                // Don't auto-fill password for security
-            } catch (e) {
-                console.warn('Failed to load saved credentials');
-                localStorage.removeItem('awsAdfsCredentials');
+                // Load credentials if they exist
+                if (config.has_credentials) {
+                    const credResponse = await fetch('/api/config/credentials');
+                    const credentials = await credResponse.json();
+
+                    if (credResponse.ok && credentials.has_credentials) {
+                        document.getElementById('adfsUsername').value = credentials.username || '';
+                        document.getElementById('adfsHost').value = credentials.adfs_host || '';
+                        // Don't auto-fill password for security
+                    }
+                }
             }
+        } catch (error) {
+            console.warn('Failed to load settings:', error);
         }
     }
 
@@ -1885,7 +1928,7 @@ class AWSADFSApp {
     }
 
     async refreshCredentials(profile) {
-        const credentials = this.getCredentials();
+        const credentials = await this.getCredentials();
         if (!credentials) {
             this.showAlert('Please configure ADFS credentials first', 'warning');
             return;
@@ -1895,7 +1938,7 @@ class AWSADFSApp {
     }
 
     async refreshGroupCredentials(profileList) {
-        const credentials = this.getCredentials();
+        const credentials = await this.getCredentials();
         if (!credentials) {
             this.showAlert('Please configure ADFS credentials first', 'warning');
             return;
@@ -1910,7 +1953,7 @@ class AWSADFSApp {
     }
 
     async refreshAllCredentials() {
-        const credentials = this.getCredentials();
+        const credentials = await this.getCredentials();
         if (!credentials) {
             this.showAlert('Please configure ADFS credentials first', 'warning');
             return;

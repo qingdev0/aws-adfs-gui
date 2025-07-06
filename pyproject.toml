@@ -16,6 +16,7 @@ dependencies = [
     "pydantic>=2.0.0",
     "python-multipart>=0.0.6",
     "aws-adfs>=2.0.0",
+    "cryptography>=41.0.0",
 ]
 
 [project.optional-dependencies]

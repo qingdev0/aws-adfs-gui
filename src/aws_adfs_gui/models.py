@@ -90,3 +90,37 @@ class AuthenticationRequest(BaseModel):
     profile: str = Field(..., description="AWS profile name")
     credentials: ADFSCredentials = Field(..., description="ADFS credentials")
     settings: ConnectionSettings = Field(default_factory=ConnectionSettings, description="Connection settings")
+
+
+class ConfigSaveRequest(BaseModel):
+    """Request to save configuration."""
+
+    credentials: ADFSCredentials | None = Field(None, description="ADFS credentials to save")
+    connection_settings: ConnectionSettings | None = Field(None, description="Connection settings to save")
+    ui_settings: dict[str, str | int | bool] | None = Field(None, description="UI settings to save")
+    save_credentials: bool = Field(default=False, description="Whether to save credentials")
+
+
+class ConfigResponse(BaseModel):
+    """Response containing configuration data."""
+
+    has_credentials: bool = Field(..., description="Whether credentials are stored")
+    credentials_valid: bool = Field(..., description="Whether stored credentials are valid")
+    connection_settings: ConnectionSettings = Field(..., description="Connection settings")
+    ui_settings: dict[str, str | int | bool] = Field(..., description="UI settings")
+    config_info: dict[str, str | int | bool] = Field(..., description="Configuration information")
+
+
+class CredentialsTestRequest(BaseModel):
+    """Request to test ADFS credentials."""
+
+    username: str = Field(..., description="ADFS username")
+    password: str = Field(..., description="ADFS password")
+    adfs_host: str = Field(..., description="ADFS server hostname")
+
+
+class CredentialsTestResponse(BaseModel):
+    """Response from credentials test."""
+
+    success: bool = Field(..., description="Whether test succeeded")
+    message: str = Field(..., description="Test result message")

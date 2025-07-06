@@ -52,6 +52,7 @@ source = { editable = "." }
 dependencies = [
     { name = "aws-adfs" },
     { name = "boto3" },
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "pydantic" },
     { name = "python-multipart" },
@@ -83,6 +84,7 @@ dev = [
 requires-dist = [
     { name = "aws-adfs", specifier = ">=2.0.0" },
     { name = "boto3", specifier = ">=1.34.0" },
+    { name = "cryptography", specifier = ">=41.0.0" },
     { name = "fastapi", specifier = ">=0.104.0" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.25.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
