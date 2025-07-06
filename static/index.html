@@ -65,57 +65,74 @@
         <div class="col-md-3 bg-light p-3 border-end">
           <!-- Dev Profiles Section -->
           <div class="mb-4">
-            <h6 class="text-muted mb-3">
-              <i class="fas fa-laptop-code me-2"></i>
-              Dev Profiles
-            </h6>
-            <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="text-primary mb-0">
+                <i class="fas fa-laptop-code me-2"></i>
+                Development
+              </h6>
               <button
-                class="btn btn-outline-primary w-100 mb-2"
+                class="btn btn-outline-primary btn-sm"
                 id="selectDevBtn"
+                onclick="app.toggleDevProfiles()"
               >
-                <i class="fas fa-rocket me-2"></i>
-                Select Dev
+                <i class="fas fa-rocket me-2"></i>Select Dev
               </button>
             </div>
             <div class="profile-list">
-              <div class="profile-item mb-2" data-profile="aws-dev-eu">
-                <div class="d-flex align-items-center">
-                  <div class="status-indicator me-2">
-                    <i
-                      class="fas fa-circle text-secondary"
-                      id="status-aws-dev-eu"
-                    ></i>
-                  </div>
-                  <span class="profile-name">aws-dev-eu</span>
-                  <span class="badge bg-secondary ms-auto" id="badge-aws-dev-eu"
-                    >Disconnected</span
-                  >
-                </div>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input profile-checkbox"
+                  type="checkbox"
+                  id="aws-dev-eu"
+                  value="aws-dev-eu"
+                />
+                <label
+                  class="form-check-label d-flex align-items-center"
+                  for="aws-dev-eu"
+                >
+                  <span class="me-2">aws-dev-eu</span>
+                  <i
+                    class="fas fa-circle text-secondary ms-auto"
+                    id="status-aws-dev-eu"
+                  ></i>
+                </label>
               </div>
-              <div class="profile-item mb-2" data-profile="aws-dev-sg">
-                <div class="d-flex align-items-center">
-                  <div class="status-indicator me-2">
-                    <i
-                      class="fas fa-circle text-secondary"
-                      id="status-aws-dev-sg"
-                    ></i>
-                  </div>
-                  <span class="profile-name">aws-dev-sg</span>
-                  <span class="badge bg-secondary ms-auto" id="badge-aws-dev-sg"
-                    >Disconnected</span
-                  >
-                </div>
+              <div class="form-check mb-2">
+                <input
+                  class="form-check-input profile-checkbox"
+                  type="checkbox"
+                  id="aws-dev-sg"
+                  value="aws-dev-sg"
+                />
+                <label
+                  class="form-check-label d-flex align-items-center"
+                  for="aws-dev-sg"
+                >
+                  <span class="me-2">aws-dev-sg</span>
+                  <i
+                    class="fas fa-circle text-secondary ms-auto"
+                    id="status-aws-dev-sg"
+                  ></i>
+                </label>
               </div>
             </div>
           </div>
 
-          <!-- Other Profiles Section -->
+          <!-- Non-Production Profiles Section -->
           <div class="mb-4">
-            <h6 class="text-muted mb-3">
-              <i class="fas fa-server me-2"></i>
-              Other Profiles
-            </h6>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="text-warning mb-0">
+                <i class="fas fa-flask me-2"></i>
+                Non-Production
+              </h6>
+              <button
+                class="btn btn-outline-warning btn-sm"
+                id="selectNpBtn"
+                onclick="app.toggleNpProfiles()"
+              >
+                <i class="fas fa-vial me-2"></i>Select Non-Prod
+              </button>
+            </div>
             <div class="profile-list">
               <div class="form-check mb-2">
                 <input
@@ -171,6 +188,25 @@
                   ></i>
                 </label>
               </div>
+            </div>
+          </div>
+
+          <!-- Production Profiles Section -->
+          <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="text-danger mb-0">
+                <i class="fas fa-shield-alt me-2"></i>
+                Production
+              </h6>
+              <button
+                class="btn btn-outline-danger btn-sm"
+                id="selectPdBtn"
+                onclick="app.togglePdProfiles()"
+              >
+                <i class="fas fa-lock me-2"></i>Select Production
+              </button>
+            </div>
+            <div class="profile-list">
               <div class="form-check mb-2">
                 <input
                   class="form-check-input profile-checkbox"
@@ -293,49 +329,300 @@
             ></button>
           </div>
           <div class="modal-body">
-            <div class="row">
-              <div class="col-md-6">
-                <h6>Connection Settings</h6>
-                <div class="mb-3">
-                  <label class="form-label">Connection Timeout (seconds)</label>
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="timeoutSetting"
-                    value="30"
-                  />
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Max Retries</label>
-                  <input
-                    type="number"
-                    class="form-control"
-                    id="retriesSetting"
-                    value="3"
-                  />
+            <!-- Nav tabs for settings sections -->
+            <ul class="nav nav-tabs mb-3" id="settingsTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link active"
+                  id="credentials-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#credentials"
+                  type="button"
+                  role="tab"
+                >
+                  <i class="fas fa-key me-1"></i>
+                  Credentials
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link"
+                  id="connection-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#connection"
+                  type="button"
+                  role="tab"
+                >
+                  <i class="fas fa-network-wired me-1"></i>
+                  Connection
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button
+                  class="nav-link"
+                  id="export-tab"
+                  data-bs-toggle="tab"
+                  data-bs-target="#export"
+                  type="button"
+                  role="tab"
+                >
+                  <i class="fas fa-download me-1"></i>
+                  Export
+                </button>
+              </li>
+            </ul>
+
+            <!-- Tab content -->
+            <div class="tab-content" id="settingsTabsContent">
+              <!-- Credentials Tab -->
+              <div
+                class="tab-pane fade show active"
+                id="credentials"
+                role="tabpanel"
+              >
+                <div class="row">
+                  <div class="col-md-6">
+                    <h6 class="text-primary mb-3">
+                      <i class="fas fa-user-shield me-2"></i>
+                      AWS ADFS Credentials
+                    </h6>
+                    <div class="mb-3">
+                      <label class="form-label">Username</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="adfsUsername"
+                        placeholder="your.username@company.com"
+                      />
+                      <div class="form-text">Your ADFS domain username</div>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Password</label>
+                      <div class="input-group">
+                        <input
+                          type="password"
+                          class="form-control"
+                          id="adfsPassword"
+                          placeholder="Enter your password"
+                        />
+                        <button
+                          class="btn btn-outline-secondary"
+                          type="button"
+                          id="togglePassword"
+                        >
+                          <i class="fas fa-eye"></i>
+                        </button>
+                      </div>
+                      <div class="form-text">Your ADFS domain password</div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <h6 class="text-primary mb-3">
+                      <i class="fas fa-server me-2"></i>
+                      ADFS Configuration
+                    </h6>
+                    <div class="mb-3">
+                      <label class="form-label">ADFS Host</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="adfsHost"
+                        placeholder="adfs.company.com"
+                      />
+                      <div class="form-text">Your ADFS server hostname</div>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Certificate File</label>
+                      <input
+                        type="file"
+                        class="form-control"
+                        id="certificateFile"
+                        accept=".pem,.crt,.cer"
+                      />
+                      <div class="form-text">
+                        Optional: SSL certificate file
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          id="saveCredentials"
+                          checked
+                        />
+                        <label class="form-check-label" for="saveCredentials">
+                          <i class="fas fa-lock me-1"></i>
+                          Save credentials securely
+                        </label>
+                      </div>
+                      <div class="form-text text-muted">
+                        <small
+                          >Credentials are encrypted and stored locally</small
+                        >
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <button
+                        type="button"
+                        class="btn btn-outline-primary"
+                        id="testCredentials"
+                      >
+                        <i class="fas fa-plug me-1"></i>
+                        Test Connection
+                      </button>
+                      <div class="form-text">
+                        Test your ADFS credentials before saving
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="col-md-6">
-                <h6>Export Settings</h6>
-                <div class="mb-3">
-                  <label class="form-label">Default Export Format</label>
-                  <select class="form-select" id="exportFormat">
-                    <option value="json">JSON</option>
-                    <option value="csv">CSV</option>
-                    <option value="text">Text</option>
-                  </select>
+
+              <!-- Connection Tab -->
+              <div class="tab-pane fade" id="connection" role="tabpanel">
+                <div class="row">
+                  <div class="col-md-6">
+                    <h6 class="text-primary mb-3">
+                      <i class="fas fa-clock me-2"></i>
+                      Timeout Settings
+                    </h6>
+                    <div class="mb-3">
+                      <label class="form-label"
+                        >Connection Timeout (seconds)</label
+                      >
+                      <input
+                        type="number"
+                        class="form-control"
+                        id="timeoutSetting"
+                        value="30"
+                      />
+                      <div class="form-text">
+                        Time to wait for ADFS authentication
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Max Retries</label>
+                      <input
+                        type="number"
+                        class="form-control"
+                        id="retriesSetting"
+                        value="3"
+                      />
+                      <div class="form-text">Number of retry attempts</div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <h6 class="text-primary mb-3">
+                      <i class="fas fa-cogs me-2"></i>
+                      Advanced Options
+                    </h6>
+                    <div class="mb-3">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          id="noSspi"
+                          checked
+                        />
+                        <label class="form-check-label" for="noSspi">
+                          Disable SSPI authentication
+                        </label>
+                      </div>
+                      <div class="form-text">
+                        Use --no-sspi flag for aws-adfs
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          id="envMode"
+                          checked
+                        />
+                        <label class="form-check-label" for="envMode">
+                          Environment variable mode
+                        </label>
+                      </div>
+                      <div class="form-text">Use --env flag for aws-adfs</div>
+                    </div>
+                  </div>
                 </div>
-                <div class="mb-3">
-                  <div class="form-check">
-                    <input
-                      class="form-check-input"
-                      type="checkbox"
-                      id="includeTimestamps"
-                      checked
-                    />
-                    <label class="form-check-label" for="includeTimestamps">
-                      Include timestamps in export
-                    </label>
+              </div>
+
+              <!-- Export Tab -->
+              <div class="tab-pane fade" id="export" role="tabpanel">
+                <div class="row">
+                  <div class="col-md-6">
+                    <h6 class="text-primary mb-3">
+                      <i class="fas fa-file-export me-2"></i>
+                      Export Format
+                    </h6>
+                    <div class="mb-3">
+                      <label class="form-label">Default Export Format</label>
+                      <select class="form-select" id="exportFormat">
+                        <option value="json">JSON</option>
+                        <option value="csv">CSV</option>
+                        <option value="text">Text</option>
+                      </select>
+                      <div class="form-text">
+                        Format for exporting command results
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          id="includeTimestamps"
+                          checked
+                        />
+                        <label class="form-check-label" for="includeTimestamps">
+                          Include timestamps in export
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <h6 class="text-primary mb-3">
+                      <i class="fas fa-shield-alt me-2"></i>
+                      Security
+                    </h6>
+                    <div class="mb-3">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          id="excludeCredentials"
+                          checked
+                        />
+                        <label
+                          class="form-check-label"
+                          for="excludeCredentials"
+                        >
+                          Exclude credentials from exports
+                        </label>
+                      </div>
+                      <div class="form-text">
+                        Never include sensitive data in exports
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          id="compressExports"
+                        />
+                        <label class="form-check-label" for="compressExports">
+                          Compress large exports
+                        </label>
+                      </div>
+                      <div class="form-text">
+                        Automatically compress exports over 1MB
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

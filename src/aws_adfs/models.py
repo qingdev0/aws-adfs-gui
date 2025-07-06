@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 class ProfileGroup(str, Enum):
@@ -66,4 +66,34 @@ class ExportRequest(BaseModel):
     format: str = Field(default="json", description="Export format (json, csv, txt)")
     include_timestamps: bool = Field(
         default=True, description="Include timestamps in export"
+    )
+
+
+class ADFSCredentials(BaseModel):
+    """ADFS authentication credentials."""
+
+    username: str = Field(..., description="ADFS username")
+    password: SecretStr = Field(..., description="ADFS password")
+    adfs_host: str = Field(..., description="ADFS server hostname")
+    certificate_path: Optional[str] = Field(
+        None, description="Path to certificate file"
+    )
+
+
+class ConnectionSettings(BaseModel):
+    """Connection settings for ADFS authentication."""
+
+    timeout: int = Field(default=30, description="Connection timeout in seconds")
+    retries: int = Field(default=3, description="Number of retry attempts")
+    no_sspi: bool = Field(default=True, description="Disable SSPI authentication")
+    env_mode: bool = Field(default=True, description="Use environment variable mode")
+
+
+class AuthenticationRequest(BaseModel):
+    """Request to authenticate with ADFS."""
+
+    profile: str = Field(..., description="AWS profile name")
+    credentials: ADFSCredentials = Field(..., description="ADFS credentials")
+    settings: ConnectionSettings = Field(
+        default_factory=ConnectionSettings, description="Connection settings"
     )

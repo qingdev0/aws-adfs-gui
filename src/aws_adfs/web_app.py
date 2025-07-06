@@ -1,9 +1,8 @@
 """FastAPI web application for AWS ADFS GUI."""
 
-import asyncio
 import json
 import os
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -11,12 +10,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from .adfs_auth import authenticator
 from .command_executor import executor
 from .config import config
 from .models import (
+    ADFSCredentials,
+    AuthenticationRequest,
     AWSProfile,
     CommandRequest,
     CommandResult,
+    ConnectionSettings,
     ExportRequest,
 )
 
@@ -81,55 +84,165 @@ class ConnectionManager:
                 # Connection might be closed
                 self.disconnect(connection)
 
-    async def connect_profile(self, profile: str, websocket: WebSocket) -> None:
+    async def connect_profile(
+        self, profile: str, websocket: WebSocket, credentials: Optional[dict] = None
+    ) -> None:
         """Connect a profile and notify the client."""
         if profile not in self.profile_connections:
             self.profile_connections[profile] = set()
 
         self.profile_connections[profile].add(websocket)
 
-        # Simulate connection process
+        # Send connecting status
         await self.send_personal_message(
             {"type": "connection_status", "profile": profile, "status": "connecting"},
             websocket,
         )
 
-        # Simulate connection delay
-        await asyncio.sleep(1)
+        try:
+            # Check if profile is valid
+            if profile not in config.get_profile_names():
+                await self.send_personal_message(
+                    {
+                        "type": "connection_status",
+                        "profile": profile,
+                        "status": "disconnected",
+                        "message": f"Profile '{profile}' not found in configuration",
+                    },
+                    websocket,
+                )
+                return
 
-        # Check if profile is valid (basic validation)
-        if profile in config.get_profile_names():
-            self.connected_profiles.add(profile)
-            await self.send_personal_message(
-                {
-                    "type": "connection_status",
-                    "profile": profile,
-                    "status": "connected",
-                },
-                websocket,
-            )
-        else:
+            # Check if already authenticated
+            if authenticator.is_authenticated(profile):
+                self.connected_profiles.add(profile)
+                await self.send_personal_message(
+                    {
+                        "type": "connection_status",
+                        "profile": profile,
+                        "status": "connected",
+                        "message": f"Profile '{profile}' already authenticated",
+                    },
+                    websocket,
+                )
+                return
+
+            # If credentials provided, attempt authentication
+            if credentials:
+                try:
+                    adfs_creds = ADFSCredentials(
+                        username=credentials.get("username", ""),
+                        password=credentials.get("password", ""),
+                        adfs_host=credentials.get("adfs_host", ""),
+                        certificate_path=credentials.get("certificate_path"),
+                    )
+
+                    settings = ConnectionSettings(
+                        timeout=credentials.get("timeout", 30),
+                        retries=credentials.get("retries", 3),
+                        no_sspi=credentials.get("no_sspi", True),
+                        env_mode=credentials.get("env_mode", True),
+                    )
+
+                    auth_request = AuthenticationRequest(
+                        profile=profile, credentials=adfs_creds, settings=settings
+                    )
+
+                    # Perform authentication
+                    success, message = await authenticator.authenticate(auth_request)
+
+                    if success:
+                        self.connected_profiles.add(profile)
+                        await self.send_personal_message(
+                            {
+                                "type": "connection_status",
+                                "profile": profile,
+                                "status": "connected",
+                                "message": message,
+                            },
+                            websocket,
+                        )
+                    else:
+                        await self.send_personal_message(
+                            {
+                                "type": "connection_status",
+                                "profile": profile,
+                                "status": "disconnected",
+                                "message": message,
+                            },
+                            websocket,
+                        )
+
+                except Exception as e:
+                    await self.send_personal_message(
+                        {
+                            "type": "connection_status",
+                            "profile": profile,
+                            "status": "disconnected",
+                            "message": f"Authentication error: {str(e)}",
+                        },
+                        websocket,
+                    )
+            else:
+                # No credentials provided - request them
+                await self.send_personal_message(
+                    {
+                        "type": "connection_status",
+                        "profile": profile,
+                        "status": "disconnected",
+                        "message": "Credentials required. Please configure ADFS settings first.",
+                    },
+                    websocket,
+                )
+
+        except Exception as e:
             await self.send_personal_message(
                 {
                     "type": "connection_status",
                     "profile": profile,
                     "status": "disconnected",
+                    "message": f"Connection error: {str(e)}",
                 },
                 websocket,
             )
 
-    async def disconnect_profile(self, profile: str, websocket: WebSocket) -> None:
+    async def disconnect_profile(
+        self, profile: str, websocket: WebSocket = None
+    ) -> None:
         """Disconnect a profile and notify the client."""
         if profile in self.profile_connections:
-            self.profile_connections[profile].discard(websocket)
-            if not self.profile_connections[profile]:
+            if websocket:
+                self.profile_connections[profile].discard(websocket)
+                if not self.profile_connections[profile]:
+                    del self.profile_connections[profile]
+                    self.connected_profiles.discard(profile)
+
+                await self.send_personal_message(
+                    {
+                        "type": "connection_status",
+                        "profile": profile,
+                        "status": "disconnected",
+                    },
+                    websocket,
+                )
+            else:
+                # Disconnect all websockets for this profile
+                for ws in self.profile_connections[profile].copy():
+                    await self.send_personal_message(
+                        {
+                            "type": "connection_status",
+                            "profile": profile,
+                            "status": "disconnected",
+                        },
+                        ws,
+                    )
                 del self.profile_connections[profile]
                 self.connected_profiles.discard(profile)
 
-        await self.send_personal_message(
-            {"type": "connection_status", "profile": profile, "status": "disconnected"},
-            websocket,
-        )
+    def disconnect_all(self) -> None:
+        """Disconnect all profiles."""
+        self.profile_connections.clear()
+        self.connected_profiles.clear()
 
 
 manager = ConnectionManager()
@@ -183,6 +296,71 @@ async def clear_command_history() -> dict:
     return {"message": "History cleared successfully"}
 
 
+@app.post("/api/auth/test")  # type: ignore[misc]
+async def test_credentials(credentials: ADFSCredentials) -> dict:
+    """Test ADFS credentials without authenticating a specific profile."""
+    try:
+        success, message = await authenticator.test_credentials(credentials)
+        return {"success": success, "message": message}
+    except Exception as e:
+        return {"success": False, "message": f"Test failed: {str(e)}"}
+
+
+@app.post("/api/auth/login")  # type: ignore[misc]
+async def login_profile(request: AuthenticationRequest) -> dict:
+    """Authenticate a specific profile with ADFS."""
+    try:
+        success, message = await authenticator.authenticate(request)
+        return {"success": success, "message": message, "profile": request.profile}
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Login failed: {str(e)}",
+            "profile": request.profile,
+        }
+
+
+@app.post("/api/auth/logout/{profile}")  # type: ignore[misc]
+async def logout_profile(profile: str) -> dict:
+    """Log out a specific profile."""
+    try:
+        authenticator.logout(profile)
+        await manager.disconnect_profile(profile)
+        return {
+            "success": True,
+            "message": f"Profile '{profile}' logged out successfully",
+        }
+    except Exception as e:
+        return {"success": False, "message": f"Logout failed: {str(e)}"}
+
+
+@app.post("/api/auth/logout-all")  # type: ignore[misc]
+async def logout_all_profiles() -> dict:
+    """Log out all profiles."""
+    try:
+        authenticator.logout_all()
+        manager.disconnect_all()
+        return {"success": True, "message": "All profiles logged out successfully"}
+    except Exception as e:
+        return {"success": False, "message": f"Logout failed: {str(e)}"}
+
+
+@app.get("/api/auth/status")  # type: ignore[misc]
+async def get_auth_status() -> dict:
+    """Get authentication status for all profiles."""
+    try:
+        profile_names = config.get_profile_names()
+        status = {}
+        for profile in profile_names:
+            status[profile] = {
+                "authenticated": authenticator.is_authenticated(profile),
+                "connected": profile in manager.connected_profiles,
+            }
+        return {"success": True, "profiles": status}
+    except Exception as e:
+        return {"success": False, "message": f"Status check failed: {str(e)}"}
+
+
 @app.websocket("/ws")  # type: ignore[misc]
 async def websocket_endpoint(websocket: WebSocket) -> None:
     """Enhanced WebSocket endpoint for real-time communication."""
@@ -198,8 +376,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
             if message_type == "connect_profile":
                 profile = message.get("profile")
+                credentials = message.get("credentials")
                 if profile:
-                    await manager.connect_profile(profile, websocket)
+                    await manager.connect_profile(profile, websocket, credentials)
 
             elif message_type == "disconnect_profile":
                 profile = message.get("profile")
