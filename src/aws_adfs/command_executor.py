@@ -4,8 +4,8 @@ import asyncio
 import os
 import time
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import datetime
-from typing import AsyncGenerator, List
 
 from .config import config
 from .models import CommandHistory, CommandRequest, CommandResult
@@ -16,12 +16,10 @@ class CommandExecutor:
 
     def __init__(self) -> None:
         """Initialize the command executor."""
-        self.command_history: List[CommandHistory] = []
+        self.command_history: list[CommandHistory] = []
         self.max_history = 100
 
-    async def execute_command(
-        self, request: CommandRequest
-    ) -> AsyncGenerator[CommandResult, None]:
+    async def execute_command(self, request: CommandRequest) -> AsyncGenerator[CommandResult, None]:
         """Execute a command across multiple profiles with smart error handling.
 
         Args:
@@ -48,8 +46,7 @@ class CommandExecutor:
         dev_results = []
         if dev_profiles:
             dev_tasks = [
-                self._execute_single_command(profile, request.command, request.timeout)
-                for profile in dev_profiles
+                self._execute_single_command(profile, request.command, request.timeout) for profile in dev_profiles
             ]
 
             for result in asyncio.as_completed(dev_tasks):
@@ -77,8 +74,7 @@ class CommandExecutor:
         # Execute other profiles
         if other_profiles:
             other_tasks = [
-                self._execute_single_command(profile, request.command, request.timeout)
-                for profile in other_profiles
+                self._execute_single_command(profile, request.command, request.timeout) for profile in other_profiles
             ]
 
             for result in asyncio.as_completed(other_tasks):
@@ -99,9 +95,7 @@ class CommandExecutor:
         )
         self._add_to_history(history_entry)
 
-    async def _execute_single_command(
-        self, profile: str, command: str, timeout: int
-    ) -> CommandResult:
+    async def _execute_single_command(self, profile: str, command: str, timeout: int) -> CommandResult:
         """Execute a single command for a specific profile.
 
         Args:
@@ -127,9 +121,7 @@ class CommandExecutor:
                 env=env,
             )
 
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=timeout
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
 
             duration = time.time() - start_time
 
@@ -138,6 +130,7 @@ class CommandExecutor:
                     profile=profile,
                     success=True,
                     output=stdout.decode("utf-8", errors="replace"),
+                    error=None,
                     duration=duration,
                 )
             else:
@@ -149,7 +142,7 @@ class CommandExecutor:
                     duration=duration,
                 )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration = time.time() - start_time
             return CommandResult(
                 profile=profile,
@@ -159,9 +152,7 @@ class CommandExecutor:
             )
         except Exception as e:
             duration = time.time() - start_time
-            return CommandResult(
-                profile=profile, success=False, error=str(e), duration=duration
-            )
+            return CommandResult(profile=profile, success=False, error=str(e), duration=duration)
 
     def _add_to_history(self, entry: CommandHistory) -> None:
         """Add command to history, maintaining max size."""
@@ -169,7 +160,7 @@ class CommandExecutor:
         if len(self.command_history) > self.max_history:
             self.command_history.pop(0)
 
-    def get_command_history(self) -> List[CommandHistory]:
+    def get_command_history(self) -> list[CommandHistory]:
         """Get command history."""
         return self.command_history.copy()
 

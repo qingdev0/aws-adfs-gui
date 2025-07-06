@@ -2,12 +2,11 @@
 
 import json
 import os
-from typing import Dict, List, Optional, Set
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .adfs_auth import authenticator
@@ -48,9 +47,9 @@ class ConnectionManager:
     """Manages WebSocket connections and profile states."""
 
     def __init__(self) -> None:
-        self.active_connections: List[WebSocket] = []
-        self.connected_profiles: Set[str] = set()
-        self.profile_connections: Dict[str, Set[WebSocket]] = {}
+        self.active_connections: list[WebSocket] = []
+        self.connected_profiles: set[str] = set()
+        self.profile_connections: dict[str, set[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket) -> None:
         """Accept a WebSocket connection."""
@@ -84,9 +83,7 @@ class ConnectionManager:
                 # Connection might be closed
                 self.disconnect(connection)
 
-    async def connect_profile(
-        self, profile: str, websocket: WebSocket, credentials: Optional[dict] = None
-    ) -> None:
+    async def connect_profile(self, profile: str, websocket: WebSocket, credentials: dict | None = None) -> None:
         """Connect a profile and notify the client."""
         if profile not in self.profile_connections:
             self.profile_connections[profile] = set()
@@ -144,9 +141,7 @@ class ConnectionManager:
                         env_mode=credentials.get("env_mode", True),
                     )
 
-                    auth_request = AuthenticationRequest(
-                        profile=profile, credentials=adfs_creds, settings=settings
-                    )
+                    auth_request = AuthenticationRequest(profile=profile, credentials=adfs_creds, settings=settings)
 
                     # Perform authentication
                     success, message = await authenticator.authenticate(auth_request)
@@ -206,9 +201,7 @@ class ConnectionManager:
                 websocket,
             )
 
-    async def disconnect_profile(
-        self, profile: str, websocket: WebSocket = None
-    ) -> None:
+    async def disconnect_profile(self, profile: str, websocket: WebSocket | None = None) -> None:
         """Disconnect a profile and notify the client."""
         if profile in self.profile_connections:
             if websocket:
@@ -248,33 +241,33 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-@app.get("/", response_class=HTMLResponse)  # type: ignore[misc]
-async def get_index() -> HTMLResponse:
+@app.get("/")
+async def get_index() -> FileResponse:
     """Serve the main HTML page."""
     html_path = os.path.join(static_dir, "index.html")
     return FileResponse(html_path)
 
 
-@app.get("/api/profiles")  # type: ignore[misc]
+@app.get("/api/profiles")
 async def get_profiles() -> dict:
     """Get all AWS profiles organized by groups."""
     return config.get_profiles()
 
 
-@app.get("/api/profiles/names")  # type: ignore[misc]
+@app.get("/api/profiles/names")
 async def get_profile_names() -> list:
     """Get all profile names as a flat list."""
     return config.get_profile_names()
 
 
-@app.post("/api/profiles")  # type: ignore[misc]
+@app.post("/api/profiles")
 async def add_profile(profile: AWSProfile) -> dict:
     """Add a new AWS profile."""
     config.add_profile(profile)
     return {"message": "Profile added successfully"}
 
 
-@app.delete("/api/profiles/{profile_name}")  # type: ignore[misc]
+@app.delete("/api/profiles/{profile_name}")
 async def remove_profile(profile_name: str) -> dict:
     """Remove an AWS profile."""
     if config.remove_profile(profile_name):
@@ -283,20 +276,20 @@ async def remove_profile(profile_name: str) -> dict:
         raise HTTPException(status_code=404, detail="Profile not found")
 
 
-@app.get("/api/history")  # type: ignore[misc]
+@app.get("/api/history")
 async def get_command_history() -> list:
     """Get command history."""
     return executor.get_command_history()
 
 
-@app.delete("/api/history")  # type: ignore[misc]
+@app.delete("/api/history")
 async def clear_command_history() -> dict:
     """Clear command history."""
     executor.clear_history()
     return {"message": "History cleared successfully"}
 
 
-@app.post("/api/auth/test")  # type: ignore[misc]
+@app.post("/api/auth/test")
 async def test_credentials(credentials: ADFSCredentials) -> dict:
     """Test ADFS credentials without authenticating a specific profile."""
     try:
@@ -306,7 +299,7 @@ async def test_credentials(credentials: ADFSCredentials) -> dict:
         return {"success": False, "message": f"Test failed: {str(e)}"}
 
 
-@app.post("/api/auth/login")  # type: ignore[misc]
+@app.post("/api/auth/login")
 async def login_profile(request: AuthenticationRequest) -> dict:
     """Authenticate a specific profile with ADFS."""
     try:
@@ -320,7 +313,7 @@ async def login_profile(request: AuthenticationRequest) -> dict:
         }
 
 
-@app.post("/api/auth/logout/{profile}")  # type: ignore[misc]
+@app.post("/api/auth/logout/{profile}")
 async def logout_profile(profile: str) -> dict:
     """Log out a specific profile."""
     try:
@@ -334,7 +327,7 @@ async def logout_profile(profile: str) -> dict:
         return {"success": False, "message": f"Logout failed: {str(e)}"}
 
 
-@app.post("/api/auth/logout-all")  # type: ignore[misc]
+@app.post("/api/auth/logout-all")
 async def logout_all_profiles() -> dict:
     """Log out all profiles."""
     try:
@@ -345,7 +338,7 @@ async def logout_all_profiles() -> dict:
         return {"success": False, "message": f"Logout failed: {str(e)}"}
 
 
-@app.get("/api/auth/status")  # type: ignore[misc]
+@app.get("/api/auth/status")
 async def get_auth_status() -> dict:
     """Get authentication status for all profiles."""
     try:
@@ -361,7 +354,7 @@ async def get_auth_status() -> dict:
         return {"success": False, "message": f"Status check failed: {str(e)}"}
 
 
-@app.websocket("/ws")  # type: ignore[misc]
+@app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
     """Enhanced WebSocket endpoint for real-time communication."""
     await manager.connect(websocket)
@@ -391,9 +384,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
                 if profile and command:
                     # Create command request
-                    request = CommandRequest(
-                        command=command, profiles=[profile], timeout=300
-                    )
+                    request = CommandRequest(command=command, profiles=[profile], timeout=300)
 
                     # Send command start notification
                     await manager.send_personal_message(
@@ -478,16 +469,12 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
-        await manager.send_personal_message(
-            {"type": "error", "message": str(e)}, websocket
-        )
+        await manager.send_personal_message({"type": "error", "message": str(e)}, websocket)
         manager.disconnect(websocket)
 
 
-@app.post("/api/export")  # type: ignore[misc]
-async def export_results(
-    export_request: ExportRequest, results: List[CommandResult]
-) -> dict:
+@app.post("/api/export")
+async def export_results(export_request: ExportRequest, results: list[CommandResult]) -> dict:
     """Export command results in various formats."""
     if export_request.format == "json":
         return {"format": "json", "data": [result.model_dump() for result in results]}
@@ -497,9 +484,7 @@ async def export_results(
         for result in results:
             output = result.output.replace('"', '""') if result.output else ""
             error = result.error.replace('"', '""') if result.error else ""
-            csv_lines.append(
-                f'"{result.profile}","{result.success}","{output}","{error}",{result.duration}'
-            )
+            csv_lines.append(f'"{result.profile}","{result.success}","{output}","{error}",{result.duration}')
         return {"format": "csv", "data": "\n".join(csv_lines)}
     elif export_request.format == "txt":
         # Convert to plain text format
@@ -521,7 +506,7 @@ async def export_results(
 
 def run_app(host: str = "127.0.0.1", port: int = 8000, reload: bool = True) -> None:
     """Run the FastAPI application."""
-    uvicorn.run("aws_adfs.web_app:app", host=host, port=port, reload=reload)
+    uvicorn.run("src.aws_adfs.web_app:app", host=host, port=port, reload=reload)
 
 
 if __name__ == "__main__":

@@ -4,10 +4,11 @@ import os
 import tempfile
 
 import pytest
-from aws_adfs.config import Config
-from aws_adfs.models import AWSProfile, ProfileGroup
-from aws_adfs.web_app import app
 from fastapi.testclient import TestClient
+
+from src.aws_adfs.config import Config
+from src.aws_adfs.models import AWSProfile, ProfileGroup
+from src.aws_adfs.web_app import app
 
 
 @pytest.fixture
@@ -122,9 +123,7 @@ class TestConfig:
     def test_add_and_remove_profile(self, temp_config):
         """Test adding and removing a profile."""
         # Add a test profile
-        test_profile = AWSProfile(
-            name="test-profile", group=ProfileGroup.DEV, region="us-west-2"
-        )
+        test_profile = AWSProfile(name="test-profile", group=ProfileGroup.DEV, region="us-west-2")
         temp_config.add_profile(test_profile)
 
         # Verify it was added

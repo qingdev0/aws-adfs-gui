@@ -2,7 +2,6 @@
 
 import asyncio
 import os
-from typing import Dict, List, Tuple
 
 from .models import ADFSCredentials, AuthenticationRequest, ConnectionSettings
 
@@ -11,9 +10,9 @@ class ADFSAuthenticator:
     """Handles ADFS authentication using aws-adfs command."""
 
     def __init__(self) -> None:
-        self.authenticated_profiles: Dict[str, bool] = {}
+        self.authenticated_profiles: dict[str, bool] = {}
 
-    async def authenticate(self, request: AuthenticationRequest) -> Tuple[bool, str]:
+    async def authenticate(self, request: AuthenticationRequest) -> tuple[bool, str]:
         """
         Authenticate with ADFS for a specific profile.
 
@@ -33,9 +32,7 @@ class ADFSAuthenticator:
             cmd = self._build_command(request)
 
             # Execute the command
-            success, output = await self._execute_command(
-                cmd, env, request.settings.timeout
-            )
+            success, output = await self._execute_command(cmd, env, request.settings.timeout)
 
             if success:
                 self.authenticated_profiles[request.profile] = True
@@ -56,7 +53,7 @@ class ADFSAuthenticator:
                 f"Authentication error for profile '{request.profile}': {str(e)}",
             )
 
-    def _build_command(self, request: AuthenticationRequest) -> List[str]:
+    def _build_command(self, request: AuthenticationRequest) -> list[str]:
         """Build the aws-adfs command with appropriate flags."""
         cmd = [
             "aws-adfs",
@@ -73,9 +70,7 @@ class ADFSAuthenticator:
 
         return cmd
 
-    async def _execute_command(
-        self, cmd: List[str], env: Dict[str, str], timeout: int
-    ) -> Tuple[bool, str]:
+    async def _execute_command(self, cmd: list[str], env: dict[str, str], timeout: int) -> tuple[bool, str]:
         """
         Execute the aws-adfs command asynchronously.
 
@@ -85,7 +80,7 @@ class ADFSAuthenticator:
             timeout: Command timeout in seconds
 
         Returns:
-            Tuple of (success, output)
+            tuple of (success, output)
         """
         try:
             process = await asyncio.create_subprocess_exec(
@@ -98,9 +93,7 @@ class ADFSAuthenticator:
 
             # Wait for completion with timeout
             try:
-                stdout, _ = await asyncio.wait_for(
-                    process.communicate(), timeout=timeout
-                )
+                stdout, _ = await asyncio.wait_for(process.communicate(), timeout=timeout)
                 output = stdout.decode("utf-8") if stdout else ""
 
                 # Check return code
@@ -109,7 +102,7 @@ class ADFSAuthenticator:
                 else:
                     return False, output
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Kill the process if it times out
                 process.kill()
                 await process.wait()
@@ -131,18 +124,11 @@ class ADFSAuthenticator:
         output_lower = output.lower()
 
         # Common error patterns and user-friendly messages
-        if (
-            "invalid username or password" in output_lower
-            or "authentication failed" in output_lower
-        ):
+        if "invalid username or password" in output_lower or "authentication failed" in output_lower:
             return "Invalid username or password. Please check your credentials."
-        elif (
-            "connection refused" in output_lower or "unable to connect" in output_lower
-        ):
+        elif "connection refused" in output_lower or "unable to connect" in output_lower:
             return "Cannot connect to ADFS server. Please check the hostname and network connection."
-        elif "ssl" in output_lower and (
-            "certificate" in output_lower or "verify" in output_lower
-        ):
+        elif "ssl" in output_lower and ("certificate" in output_lower or "verify" in output_lower):
             return "SSL certificate error. Please check your certificate file or disable SSL verification."
         elif "timeout" in output_lower:
             return "Connection timeout. Please check your network connection and ADFS server availability."
@@ -153,9 +139,7 @@ class ADFSAuthenticator:
         elif "network is unreachable" in output_lower:
             return "Network is unreachable. Please check your internet connection."
         elif "name or service not known" in output_lower:
-            return (
-                "Cannot resolve ADFS server hostname. Please check the server address."
-            )
+            return "Cannot resolve ADFS server hostname. Please check the server address."
         else:
             # Return the first line of the error for debugging, but cleaned up
             first_line = output.split("\n")[0].strip()
@@ -174,7 +158,7 @@ class ADFSAuthenticator:
         """Mark all profiles as logged out."""
         self.authenticated_profiles.clear()
 
-    async def test_credentials(self, credentials: ADFSCredentials) -> Tuple[bool, str]:
+    async def test_credentials(self, credentials: ADFSCredentials) -> tuple[bool, str]:
         """
         Test ADFS credentials without authenticating a specific profile.
 

@@ -3,7 +3,6 @@
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from .models import AWSProfile, ProfileGroup, ProfileGroups
 
@@ -11,7 +10,7 @@ from .models import AWSProfile, ProfileGroup, ProfileGroups
 class Config:
     """Application configuration manager."""
 
-    def __init__(self, config_file: Optional[str] = None):
+    def __init__(self, config_file: str | None = None):
         """Initialize configuration.
 
         Args:
@@ -27,10 +26,16 @@ class Config:
         self.default_profiles = {
             ProfileGroup.DEV: [
                 AWSProfile(
-                    name="aws-dev-eu", group=ProfileGroup.DEV, region="eu-west-1"
+                    name="aws-dev-eu",
+                    group=ProfileGroup.DEV,
+                    region="eu-west-1",
+                    description="Development EU",
                 ),
                 AWSProfile(
-                    name="aws-dev-sg", group=ProfileGroup.DEV, region="ap-southeast-1"
+                    name="aws-dev-sg",
+                    group=ProfileGroup.DEV,
+                    region="ap-southeast-1",
+                    description="Development SG",
                 ),
             ],
             ProfileGroup.NON_PRODUCTION: [
@@ -38,27 +43,39 @@ class Config:
                     name="kds-ets-np",
                     group=ProfileGroup.NON_PRODUCTION,
                     region="us-east-1",
+                    description="KDS ETS Non-Production",
                 ),
                 AWSProfile(
                     name="kds-gps-np",
                     group=ProfileGroup.NON_PRODUCTION,
                     region="us-east-1",
+                    description="KDS GPS Non-Production",
                 ),
                 AWSProfile(
                     name="kds-iss-np",
                     group=ProfileGroup.NON_PRODUCTION,
                     region="us-east-1",
+                    description="KDS ISS Non-Production",
                 ),
             ],
             ProfileGroup.PRODUCTION: [
                 AWSProfile(
-                    name="kds-ets-pd", group=ProfileGroup.PRODUCTION, region="us-east-1"
+                    name="kds-ets-pd",
+                    group=ProfileGroup.PRODUCTION,
+                    region="us-east-1",
+                    description="KDS ETS Production",
                 ),
                 AWSProfile(
-                    name="kds-gps-pd", group=ProfileGroup.PRODUCTION, region="us-east-1"
+                    name="kds-gps-pd",
+                    group=ProfileGroup.PRODUCTION,
+                    region="us-east-1",
+                    description="KDS GPS Production",
                 ),
                 AWSProfile(
-                    name="kds-iss-pd", group=ProfileGroup.PRODUCTION, region="us-east-1"
+                    name="kds-iss-pd",
+                    group=ProfileGroup.PRODUCTION,
+                    region="us-east-1",
+                    description="KDS ISS Production",
                 ),
             ],
         }
@@ -83,18 +100,18 @@ class Config:
         with open(self.config_file, "w") as f:
             json.dump(self.profile_groups.model_dump(), f, indent=2)
 
-    def get_profiles(self) -> Dict[ProfileGroup, List[AWSProfile]]:
+    def get_profiles(self) -> dict[ProfileGroup, list[AWSProfile]]:
         """Get all profiles organized by groups."""
         return self.profile_groups.groups
 
-    def get_profile_names(self) -> List[str]:
+    def get_profile_names(self) -> list[str]:
         """Get all profile names as a flat list."""
         names = []
         for profiles in self.profile_groups.groups.values():
             names.extend([profile.name for profile in profiles])
         return names
 
-    def get_profile_by_name(self, name: str) -> Optional[AWSProfile]:
+    def get_profile_by_name(self, name: str) -> AWSProfile | None:
         """Get a specific profile by name."""
         for profiles in self.profile_groups.groups.values():
             for profile in profiles:

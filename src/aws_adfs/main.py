@@ -1,12 +1,11 @@
 """Main module for AWS ADFS integration."""
 
 import sys
-from typing import Optional
 
 from .web_app import run_app
 
 
-def hello(name: Optional[str] = None) -> str:
+def hello(name: str | None = None) -> str:
     """Return a greeting message.
 
     Args:

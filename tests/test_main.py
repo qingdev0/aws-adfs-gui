@@ -1,7 +1,8 @@
 """Tests for the main module."""
 
 import pytest
-from aws_adfs.main import hello
+
+from src.aws_adfs.main import hello
 
 
 class TestHello:
@@ -27,7 +28,7 @@ class TestHello:
         result = hello(None)
         assert result == "Hello, World!"
 
-    @pytest.mark.parametrize(  # type: ignore[misc]
+    @pytest.mark.parametrize(
         "name,expected",
         [
             ("Bob", "Hello, Bob!"),

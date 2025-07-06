@@ -50,7 +50,7 @@ pre-commit-run:
 
 # Start the web application
 web:
-    uv run python -m aws_adfs.main web
+    uv run python -m src.aws_adfs.main web
 
 # Start the web application and open in browser
 web-open:
@@ -63,7 +63,7 @@ web-open:
     just kill-server || true
 
     # Start the web server in background
-    uv run python -m aws_adfs.main web &
+    uv run python -m src.aws_adfs.main web &
     SERVER_PID=$!
 
     # Wait a moment for server to start
@@ -88,7 +88,7 @@ web-open:
 
 # Start the web application in development mode
 web-dev:
-    uv run uvicorn aws_adfs.web_app:app --reload --host 127.0.0.1 --port 8000
+    uv run uvicorn src.aws_adfs.web_app:app --reload --host 127.0.0.1 --port 8000
 
 # Start the web application in development mode and open in browser
 web-dev-open:
@@ -101,7 +101,7 @@ web-dev-open:
     just kill-server || true
 
     # Start the web server in background
-    uv run uvicorn aws_adfs.web_app:app --reload --host 127.0.0.1 --port 8000 &
+    uv run uvicorn src.aws_adfs.web_app:app --reload --host 127.0.0.1 --port 8000 &
     SERVER_PID=$!
 
     # Wait a moment for server to start
@@ -133,8 +133,8 @@ kill-server:
     lsof -ti:8000 | xargs kill -9 2>/dev/null || true
 
     # Kill any python processes running the web app
-    pkill -f "aws_adfs.main web" 2>/dev/null || true
-    pkill -f "aws_adfs.web_app:app" 2>/dev/null || true
+    pkill -f "src.aws_adfs.main web" 2>/dev/null || true
+    pkill -f "src.aws_adfs.web_app:app" 2>/dev/null || true
 
     echo "✅ Server processes stopped"
 
