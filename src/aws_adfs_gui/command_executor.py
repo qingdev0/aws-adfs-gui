@@ -1,173 +1,224 @@
-"""Command execution engine for AWS ADFS GUI application."""
+"""Command execution engine for AWS CLI commands across multiple profiles."""
 
 import asyncio
-import os
+import shlex
+import subprocess
 import time
-import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime
+from typing import Any
 
-from .config import config
-from .models import CommandHistory, CommandRequest, CommandResult
+from .models import AWSProfile, CommandResult, ExecutionStatus
 
 
 class CommandExecutor:
-    """Executes commands across multiple AWS profiles."""
+    """Executes AWS CLI commands across multiple profiles."""
 
-    def __init__(self) -> None:
-        """Initialize the command executor."""
-        self.command_history: list[CommandHistory] = []
-        self.max_history = 100
-
-    async def execute_command(self, request: CommandRequest) -> AsyncGenerator[CommandResult, None]:
-        """Execute a command across multiple profiles with smart error handling.
+    def __init__(self, timeout: int = 30):
+        """Initialize the command executor.
 
         Args:
-            request: Command execution request
+            timeout: Command timeout in seconds
+        """
+        self.timeout = timeout
+
+    async def execute_command(
+        self,
+        command: str,
+        profiles: list[AWSProfile],
+        stop_on_error: bool = True,
+    ) -> AsyncGenerator[CommandResult, None]:
+        """Execute command across multiple profiles.
+
+        Args:
+            command: AWS CLI command to execute
+            profiles: List of AWS profiles to execute command on
+            stop_on_error: Whether to stop execution on first error
 
         Yields:
-            CommandResult for each profile as they complete
+            CommandResult for each profile
         """
-        command_id = str(uuid.uuid4())
-        start_time = datetime.now()
-
-        # Separate dev profiles from others for smart error handling
-        dev_profiles = []
-        other_profiles = []
-
-        for profile_name in request.profiles:
-            profile = config.get_profile_by_name(profile_name)
-            if profile and profile.group.value == "dev":
-                dev_profiles.append(profile_name)
-            else:
-                other_profiles.append(profile_name)
-
-        # Execute dev profiles first
-        dev_results = []
-        if dev_profiles:
-            dev_tasks = [
-                self._execute_single_command(profile, request.command, request.timeout) for profile in dev_profiles
-            ]
-
-            for result in asyncio.as_completed(dev_tasks):
-                result_obj = await result
-                dev_results.append(result_obj)
-                yield result_obj
-
-        # Check if any dev profiles failed immediately
-        dev_failures = [r for r in dev_results if not r.success]
-
-        # If dev profiles failed, don't proceed to other profiles
-        if dev_failures:
-            # Create history entry
-            history_entry = CommandHistory(
-                id=command_id,
-                command=request.command,
-                timestamp=start_time.isoformat(),
-                profiles=request.profiles,
-                success_count=len(dev_results) - len(dev_failures),
-                total_count=len(request.profiles),
-            )
-            self._add_to_history(history_entry)
+        if not profiles:
             return
 
-        # Execute other profiles
-        if other_profiles:
-            other_tasks = [
-                self._execute_single_command(profile, request.command, request.timeout) for profile in other_profiles
-            ]
+        # Parse and validate command
+        try:
+            parsed_cmd = self._parse_command(command)
+        except ValueError as e:
+            for profile in profiles:
+                yield CommandResult(
+                    profile=profile.name,
+                    command=command,
+                    status=ExecutionStatus.ERROR,
+                    output="",
+                    error=f"Invalid command: {e}",
+                    duration=0.0,
+                )
+            return
 
-            for result in asyncio.as_completed(other_tasks):
-                result_obj = await result
-                yield result_obj
+        # Execute commands
+        execution_params = {"command": command, "parsed_cmd": parsed_cmd, "stop_on_error": stop_on_error}
 
-        # Create history entry
-        all_results = dev_results + [r async for r in self.execute_command(request)]
-        success_count = len([r for r in all_results if r.success])
+        for profile in profiles:
+            result = await self._execute_single_command(profile, execution_params)
+            yield result
 
-        history_entry = CommandHistory(
-            id=command_id,
-            command=request.command,
-            timestamp=start_time.isoformat(),
-            profiles=request.profiles,
-            success_count=success_count,
-            total_count=len(request.profiles),
-        )
-        self._add_to_history(history_entry)
+            # Stop on error if configured
+            if stop_on_error and result.status == ExecutionStatus.ERROR:
+                # Return error results for remaining profiles
+                for remaining_profile in profiles[profiles.index(profile) + 1 :]:
+                    yield CommandResult(
+                        profile=remaining_profile.name,
+                        command=command,
+                        status=ExecutionStatus.SKIPPED,
+                        output="",
+                        error="Skipped due to previous error",
+                        duration=0.0,
+                    )
+                break
 
-    async def _execute_single_command(self, profile: str, command: str, timeout: int) -> CommandResult:
-        """Execute a single command for a specific profile.
+    def _parse_command(self, command: str) -> list[str]:
+        """Parse and validate AWS command.
 
         Args:
-            profile: AWS profile name
-            command: Command to execute
-            timeout: Command timeout in seconds
+            command: Raw command string
 
         Returns:
-            CommandResult with execution details
+            Parsed command tokens
+
+        Raises:
+            ValueError: If command is invalid
+        """
+        if not command.strip():
+            raise ValueError("Command cannot be empty")
+
+        # Parse command using shell lexer
+        try:
+            tokens = shlex.split(command)
+        except ValueError as e:
+            raise ValueError(f"Invalid command syntax: {e}") from e
+
+        # Basic validation
+        if not tokens:
+            raise ValueError("Command cannot be empty")
+
+        # Ensure AWS command
+        if tokens[0] != "aws":
+            tokens.insert(0, "aws")
+
+        return tokens
+
+    async def _execute_single_command(self, profile: AWSProfile, params: dict[str, Any]) -> CommandResult:
+        """Execute command for a single profile.
+
+        Args:
+            profile: AWS profile to use
+            params: Execution parameters
+
+        Returns:
+            Command execution result
         """
         start_time = time.time()
+        cmd_tokens = params["parsed_cmd"].copy()
+
+        # Add profile to command
+        if "--profile" not in cmd_tokens:
+            cmd_tokens.extend(["--profile", profile.name])
+
+        # Add region if specified
+        if profile.region and "--region" not in cmd_tokens:
+            cmd_tokens.extend(["--region", profile.region])
 
         try:
-            # Set AWS profile environment variable
-            env = os.environ.copy()
-            env["AWS_PROFILE"] = profile
-
             # Execute command
-            process = await asyncio.create_subprocess_shell(
-                command,
+            process = await asyncio.create_subprocess_exec(
+                *cmd_tokens,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=env,
+                env=None,  # Use current environment
             )
 
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+            # Wait for completion with timeout
+            try:
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=self.timeout)
+            except TimeoutError:
+                process.kill()
+                await process.wait()
+                duration = time.time() - start_time
+                return CommandResult(
+                    profile=profile.name,
+                    command=params["command"],
+                    status=ExecutionStatus.ERROR,
+                    output="",
+                    error=f"Command timed out after {self.timeout} seconds",
+                    duration=duration,
+                )
 
             duration = time.time() - start_time
 
+            # Decode output
+            output_str = stdout.decode("utf-8") if stdout else ""
+            error_str = stderr.decode("utf-8") if stderr else ""
+
+            # Determine status
             if process.returncode == 0:
-                return CommandResult(
-                    profile=profile,
-                    success=True,
-                    output=stdout.decode("utf-8", errors="replace"),
-                    error=None,
-                    duration=duration,
-                )
+                status = ExecutionStatus.SUCCESS
             else:
-                return CommandResult(
-                    profile=profile,
-                    success=False,
-                    output=stdout.decode("utf-8", errors="replace"),
-                    error=stderr.decode("utf-8", errors="replace"),
-                    duration=duration,
-                )
+                status = ExecutionStatus.ERROR
 
-        except TimeoutError:
-            duration = time.time() - start_time
             return CommandResult(
-                profile=profile,
-                success=False,
-                error=f"Command timed out after {timeout} seconds",
+                profile=profile.name,
+                command=params["command"],
+                status=status,
+                output=output_str,
+                error=error_str,
                 duration=duration,
             )
-        except Exception as e:
+
+        except (OSError, subprocess.SubprocessError) as e:
             duration = time.time() - start_time
-            return CommandResult(profile=profile, success=False, error=str(e), duration=duration)
+            return CommandResult(
+                profile=profile.name,
+                command=params["command"],
+                status=ExecutionStatus.ERROR,
+                output="",
+                error=f"Failed to execute command: {e}",
+                duration=duration,
+            )
 
-    def _add_to_history(self, entry: CommandHistory) -> None:
-        """Add command to history, maintaining max size."""
-        self.command_history.append(entry)
-        if len(self.command_history) > self.max_history:
-            self.command_history.pop(0)
+    def validate_profiles(self, profiles: list[AWSProfile]) -> list[str]:
+        """Validate that profiles exist and are accessible.
 
-    def get_command_history(self) -> list[CommandHistory]:
-        """Get command history."""
-        return self.command_history.copy()
+        Args:
+            profiles: List of profiles to validate
 
-    def clear_history(self) -> None:
-        """Clear command history."""
-        self.command_history.clear()
+        Returns:
+            List of error messages (empty if all valid)
+        """
+        errors = []
+
+        for profile in profiles:
+            if not profile.name:
+                errors.append("Profile name cannot be empty")
+                continue
+
+            # Try to get caller identity to validate profile
+            try:
+                result = subprocess.run(
+                    ["aws", "sts", "get-caller-identity", "--profile", profile.name],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=False,
+                )
+
+                if result.returncode != 0:
+                    errors.append(f"Profile '{profile.name}' is not valid: {result.stderr.strip()}")
+
+            except (subprocess.TimeoutExpired, OSError) as e:
+                errors.append(f"Profile '{profile.name}' validation failed: {e}")
+
+        return errors
 
 
-# Global command executor instance
+# Global instance for compatibility
 executor = CommandExecutor()

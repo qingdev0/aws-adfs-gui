@@ -1,41 +1,46 @@
-"""Main module for AWS ADFS integration."""
+"""Main entry point for AWS ADFS GUI application."""
 
 import sys
 
+import uvicorn
 
-def hello(name: str | None = None) -> str:
-    """Say hello to someone.
-
-    Args:
-        name: The name of the person to greet. If None, greets the world.
-
-    Returns:
-        A greeting message.
-    """
-    if name:
-        return f"Hello, {name}!"
-    return "Hello, World!"
+from .web_app import app
 
 
 def main() -> None:
-    """Main entry point for the application."""
-    if len(sys.argv) > 1 and sys.argv[1] == "web":
-        try:
-            from .web_app import app
-        except ImportError as e:
-            print(f"Web dependencies not available: {e}")
-            print("Install with: uv add 'fastapi' 'uvicorn[standard]'")
-            return
+    """Main entry point for the CLI."""
+    if len(sys.argv) < 2:
+        print("Usage: python -m aws_adfs_gui.main <command>")
+        print("Commands:")
+        print("  web    Start the web application")
+        sys.exit(1)
 
-        import uvicorn
+    command = sys.argv[1]
 
-        print("Starting AWS ADFS GUI web application...")
-        print("Usage: python -m aws_adfs_gui.main web")
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+    if command == "web":
+        start_web_server()
     else:
-        print(hello())
-        print("Available commands:")
-        print("  web    Start the web interface")
+        print(f"Unknown command: {command}")
+        sys.exit(1)
+
+
+def start_web_server() -> None:
+    """Start the web server."""
+    print("Starting AWS ADFS GUI web application...")
+    print("Usage: python -m aws_adfs_gui.main web")
+
+    try:
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=8000,
+            log_level="info",
+        )
+    except KeyboardInterrupt:
+        print("\nShutting down...")
+    except Exception as e:
+        print(f"Error starting web server: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

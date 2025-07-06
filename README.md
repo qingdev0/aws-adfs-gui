@@ -1,6 +1,7 @@
 # AWS ADFS GUI
 
-A modern Python web application for AWS ADFS integration with multi-profile command execution.
+A modern Python web application for AWS ADFS integration with multi-profile
+command execution.
 
 ## Features
 
@@ -43,13 +44,13 @@ git clone https://github.com/qingdev0/aws-adfs-gui.git
 cd aws-adfs-gui
 ```
 
-2. **Install uv if you haven't already:**
+1. **Install uv if you haven't already:**
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-3. **Quick setup (recommended):**
+1. **Quick setup (recommended):**
 
 ```bash
 just setup
@@ -57,7 +58,7 @@ just setup
 
 This will install dependencies, set up pre-commit hooks, and run initial checks.
 
-4. **Manual setup:**
+1. **Manual setup:**
 
 ```bash
 # Install dependencies
@@ -71,7 +72,7 @@ just pre-commit-install
 
 ### Project Structure
 
-```
+```text
 aws-adfs-gui/
 ├── src/
 │   └── aws_adfs_gui/
@@ -189,8 +190,8 @@ just web-dev-open
 The application will:
 
 1. **Start the server** on `http://127.0.0.1:8000`
-2. **Automatically open your browser** to the application
-3. **Kill any existing server processes** to prevent port conflicts
+1. **Automatically open your browser** to the application
+1. **Kill any existing server processes** to prevent port conflicts
 
 ### Manual Start
 
@@ -204,11 +205,11 @@ just web
 ### Using the GUI
 
 1. **📱 Open Browser**: Navigate to `http://127.0.0.1:8000`
-2. **🔧 Configure Settings**: Set up ADFS credentials in the configuration panel
-3. **👥 Select AWS Profiles**: Choose from the left panel (grouped by environment)
-4. **⚡ Execute Commands**: Enter AWS CLI commands in the center panel
-5. **📊 View Results**: Real-time results appear in separate tabs
-6. **💾 Export Data**: Download results in JSON, CSV, or text format
+1. **🔧 Configure Settings**: Set up ADFS credentials in the configuration panel
+1. **👥 Select AWS Profiles**: Choose from the left panel (grouped by environment)
+1. **⚡ Execute Commands**: Enter AWS CLI commands in the center panel
+1. **📊 View Results**: Real-time results appear in separate tabs
+1. **💾 Export Data**: Download results in JSON, CSV, or text format
 
 ### Key Features
 
@@ -298,12 +299,12 @@ just all
 ## Contributing
 
 1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature-name`
-3. **Make your changes**
-4. **Run quality checks**: `just all`
-5. **Commit with conventional commits**: `git commit -m "feat: add new feature"`
-6. **Push to your fork**: `git push origin feature-name`
-7. **Create a pull request**
+1. **Create a feature branch**: `git checkout -b feature-name`
+1. **Make your changes**
+1. **Run quality checks**: `just all`
+1. **Commit with conventional commits**: `git commit -m "feat: add new feature"`
+1. **Push to your fork**: `git push origin feature-name`
+1. **Create a pull request**
 
 ## License
 

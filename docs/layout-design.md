@@ -1,87 +1,62 @@
-# AWS ADFS GUI - Modern Layout Design
+# AWS ADFS GUI Layout Design
 
-## Current vs Proposed Layout
+This document describes the layout design for the AWS ADFS GUI application.
 
-### Proposed Modern Layout:
+## Main Layout Structure
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│ 🌩️ AWS ADFS GUI                                              ⚙️ Settings │ Status: ● │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│ Command: [aws s3 ls                                    ] [▶️ Execute] [📋 History] │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                     │
-│ ┌─ Dev Profiles ────────────────┐ ┌─ Profile Tabs ─────────────────────────────────┐ │
-│ │ [🟢 aws-dev-eu    ] Connected │ │ [aws-dev-eu] [aws-dev-sg] [+]                  │ │
-│ │ [🟢 aws-dev-sg    ] Connected │ │                                                │ │
-│ │ [Select Dev] (highlighted)     │ │ ┌─ aws-dev-eu Results ─────────────────────────┐ │
-│ └───────────────────────────────┘ │ │ $ aws s3 ls                                  │ │
-│                                   │ │ 2024-01-15 10:30:00 bucket1                 │ │
-│ ┌─ Other Profiles ──────────────┐ │ │ 2024-01-15 10:30:00 bucket2                 │ │
-│ │ ☐ kds-ets-np                  │ │ │ 2024-01-15 10:30:00 bucket3                 │ │
-│ │ ☐ kds-gps-np                  │ │ │                                              │ │
-│ │ ☐ kds-iss-np                  │ │ │ Duration: 1.23s ✅ Success                   │ │
-│ │ ☐ kds-ets-pd                  │ │ └──────────────────────────────────────────────┘ │
-│ │ ☐ kds-gps-pd                  │ └─────────────────────────────────────────────────┘ │
-│ │ ☐ kds-iss-pd                  │                                                     │
-│ └───────────────────────────────┘                                                     │
-│                                                                                     │
-└─────────────────────────────────────────────────────────────────────────────────────┘
+```html
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Header │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Left Panel │ Center Panel │ Right Panel │ │ (Profiles) │ (Input/History) │
+(Results/Tabs) │ │ │ │ │ │ ┌───────────┐ │ ┌─────────────────────────────┐ │
+┌───────────────┐ │ │ │ Profile │ │ │ Command Input │ │ │ Result Tabs │ │ │ │
+Groups: │ │ │ ┌─────────────────────────┐ │ │ │ ┌───────────┐ │ │ │ │ │ │ │ │
+aws s3 ls │ │ │ │ │ Profile 1 │ │ │ │ │ ☐ Dev │ │ │ └─────────────────────────┘
+│ │ │ │ Profile 2 │ │ │ │ │ ☐ Non-Prod│ │ │ │ │ │ │ Profile 3 │ │ │ │ │ ☐ Prod │
+│ │ [Execute] [Clear] │ │ │ └───────────┘ │ │ │ │ │ │ │ │ │ │ │ │ │ │ History: │
+│ │ Command History: │ │ │ Result Area: │ │ │ │ ┌───────┐ │ │ │
+┌─────────────────────────┐ │ │ │ ┌───────────┐ │ │ │ │ │ Last │ │ │ │ │ aws s3
+ls │ │ │ │ │ Command │ │ │ │ │ │ 10 │ │ │ │ │ aws ec2 describe-inst │ │ │ │ │
+Output │ │ │ │ │ │ cmds │ │ │ │ │ aws iam list-users │ │ │ │ │ Here │ │ │ │ │
+└───────┘ │ │ │ └─────────────────────────┘ │ │ │ └───────────┘ │ │ │
+└───────────┘ │ └─────────────────────────────┘ │ └───────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Connection Status Indicators:
+## Panel Descriptions
 
-- 🔴 **Red/Gray**: Disconnected
-- 🟡 **Yellow**: Connecting...
-- 🟢 **Green**: Connected
+### Left Panel (Profile Selection)
 
-## Key Features:
+- **Profile Groups**: Checkboxes for Dev, Non-Production, Production
+- **Individual Profiles**: Expandable groups showing specific AWS profiles
+- **Command History**: Last 10 executed commands for quick re-execution
 
-### 1. Top Command Bar
+### Center Panel (Command Input)
 
-- Single line command input at the top
-- Execute button with play icon
-- History button for quick access
-- Settings gear icon (opens modal/page)
+- **Command Input Field**: Text area for entering AWS CLI commands
+- **Action Buttons**: Execute, Clear, and other command actions
+- **Command History**: Scrollable list of previous commands
 
-### 2. Left Panel - Profile Management
+### Right Panel (Results Display)
 
-- **Dev Profiles Section**:
-  - "Select Dev" button that highlights when active
-  - Individual dev profiles with connection status
-  - Auto-connect when "Select Dev" is clicked
-- **Other Profiles Section**:
-  - Individual checkboxes for manual selection
-  - Connection status for each
+- **Result Tabs**: One tab per selected profile showing execution results
+- **Result Area**: Command output, errors, and execution status
+- **Export Options**: Buttons to export results in different formats
 
-### 3. Right Panel - Tabbed Results
+## Responsive Design
 
-- Dynamic tabs created when profiles connect
-- Each tab shows profile name
-- Real-time command output
-- Success/error indicators
-- Execution time display
+The layout adapts to different screen sizes:
 
-### 4. Connection Flow
+- **Desktop**: Three-column layout as shown above
+- **Tablet**: Two-column layout (left panel collapses to dropdown)
+- **Mobile**: Single column with expandable sections
 
-1. User clicks "Select Dev"
-2. Button highlights (stays highlighted)
-3. Connection initiated to aws-dev-eu and aws-dev-sg
-4. Status changes: Gray → Yellow → Green
-5. Tabs automatically created for connected profiles
-6. Ready for command execution
+## Color Scheme
 
-### 5. Settings Modal
-
-- Timeout configuration
-- Export format selection
-- Advanced options
-- Profile management (add/remove)
-
-## Technical Implementation:
-
-- WebSocket for real-time connection status
-- Dynamic tab creation
-- Persistent button states
-- Modern CSS with animations
-- Responsive design
+- **Primary**: Blue (#007bff) for buttons and active elements
+- **Secondary**: Gray (#6c757d) for secondary text and borders
+- **Success**: Green (#28a745) for successful operations
+- **Warning**: Yellow (#ffc107) for warnings
+- **Error**: Red (#dc3545) for errors and failures
+- **Background**: Light gray (#f8f9fa) for main background

@@ -10,45 +10,7 @@ if "src" not in sys.path:
     sys.path.insert(0, "src")
 
 # Local imports
-from aws_adfs_gui.main import hello, main
-
-
-class TestHello:
-    """Test cases for the hello function."""
-
-    def test_hello_without_name(self) -> None:
-        """Test hello function without providing a name."""
-        result = hello()
-        assert result == "Hello, World!"
-
-    def test_hello_with_name(self) -> None:
-        """Test hello function with a specific name."""
-        result = hello("Alice")
-        assert result == "Hello, Alice!"
-
-    def test_hello_with_empty_string(self) -> None:
-        """Test hello function with an empty string."""
-        result = hello("")
-        # Empty string is falsy, so should return "Hello, World!"
-        assert result == "Hello, World!"
-
-    def test_hello_with_none_explicitly(self) -> None:
-        """Test hello function with None explicitly passed."""
-        result = hello(None)
-        assert result == "Hello, World!"
-
-    @pytest.mark.parametrize(
-        "name,expected",
-        [
-            ("Bob", "Hello, Bob!"),
-            ("Charlie", "Hello, Charlie!"),
-            ("David", "Hello, David!"),
-        ],
-    )
-    def test_hello_with_various_names(self, name: str, expected: str) -> None:
-        """Test hello function with various names."""
-        result = hello(name)
-        assert result == expected
+from aws_adfs_gui.main import main
 
 
 class TestMain:
@@ -69,8 +31,8 @@ class TestMain:
         """Test main function without arguments."""
         main()
 
-        # Should print hello message and available commands
-        mock_print.assert_any_call("Hello, World!")
+        # Should print usage information
+        mock_print.assert_any_call("AWS ADFS GUI - Command Line Interface")
         mock_print.assert_any_call("Available commands:")
         mock_print.assert_any_call("  web    Start the web interface")
 
@@ -80,7 +42,7 @@ class TestMain:
         """Test main function with invalid argument."""
         main()
 
-        # Should print hello message and available commands (same as no arguments)
-        mock_print.assert_any_call("Hello, World!")
+        # Should print usage information (same as no arguments)
+        mock_print.assert_any_call("AWS ADFS GUI - Command Line Interface")
         mock_print.assert_any_call("Available commands:")
         mock_print.assert_any_call("  web    Start the web interface")

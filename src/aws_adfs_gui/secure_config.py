@@ -1,64 +1,48 @@
-"""Secure configuration management for AWS ADFS GUI application."""
+"""Secure configuration management with encryption support."""
 
 import json
 import os
-import secrets
-from base64 import b64encode
+import platform
 from pathlib import Path
 from typing import Any
 
 from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from pydantic import BaseModel, Field, SecretStr
 
-from .models import ADFSCredentials, AWSProfile, ConnectionSettings, ProfileGroup, ProfileGroups
+from .models import AWSProfile, ProfileGroup
 
 
 class SecureCredentials(BaseModel):
-    """Secure credentials model for encrypted storage."""
+    """Secure credentials model with encryption."""
 
     username: str = Field(..., description="ADFS username")
-    adfs_host: str = Field(..., description="ADFS server hostname")
+    password: SecretStr = Field(..., description="ADFS password")
+    domain: str = Field(..., description="ADFS domain")
+    adfs_url: str = Field(..., description="ADFS URL")
     certificate_path: str | None = Field(None, description="Path to certificate file")
-    # Password is stored separately, encrypted
 
 
 class SecureConfig(BaseModel):
     """Secure configuration model."""
 
-    credentials: SecureCredentials | None = Field(None, description="ADFS credentials (password encrypted separately)")
-    connection_settings: ConnectionSettings = Field(
-        default_factory=ConnectionSettings, description="Connection settings"
-    )
-    profile_groups: ProfileGroups = Field(default_factory=ProfileGroups, description="Profile groups")
-    ui_settings: dict[str, Any] = Field(default_factory=dict, description="UI settings")
-    version: str = Field(default="1.0", description="Config version")
+    profiles: dict[ProfileGroup, list[AWSProfile]] = Field(default_factory=dict)
+    credentials: SecureCredentials | None = Field(None, description="Encrypted credentials")
+    default_command: str = Field(default="aws s3 ls")
+    max_history: int = Field(default=100, ge=1, le=1000)
+    timeout: int = Field(default=30, ge=1, le=300)
+    default_region: str = Field(default="us-east-1")
 
 
 class SecureConfigManager:
-    """Secure configuration manager with encryption support."""
+    """Manages secure configuration with encryption."""
 
-    def __init__(self, config_dir: str | None = None):
-        """Initialize secure configuration manager.
-
-        Args:
-            config_dir: Configuration directory path. If None, uses ~/.aws/gui/
-        """
-        if config_dir is None:
-            config_dir = os.path.expanduser("~/.aws/gui")
-
-        self.config_dir = Path(config_dir)
+    def __init__(self, config_dir: Path | None = None):
+        self.config_dir = config_dir or Path.home() / ".aws" / "gui"
+        self.config_file = self.config_dir / "secure_config.json"
+        self.key_file = self.config_dir / "encryption.key"
         self.config_dir.mkdir(parents=True, exist_ok=True)
 
-        self.config_file = self.config_dir / "config.json"
-        self.key_file = self.config_dir / ".key"
-        self.password_file = self.config_dir / ".credentials"
-
-        # Initialize encryption key
-        self._init_encryption_key()
-
-        # Default profile configuration
+        # Initialize default profiles
         self.default_profiles = {
             ProfileGroup.DEV: [
                 AWSProfile(
@@ -116,295 +100,207 @@ class SecureConfigManager:
             ],
         }
 
-        # Load existing configuration
-        self.config = self._load_config()
+        # Initialize encryption
+        self._fernet: Fernet | None = None
+        self._ensure_encryption_key()
 
-    def _init_encryption_key(self) -> None:
-        """Initialize or load encryption key."""
-        if self.key_file.exists():
-            # Load existing key
-            try:
-                with open(self.key_file, "rb") as f:
-                    key_data = f.read()
-                self._fernet = Fernet(key_data)
-            except Exception:
-                # If key is corrupted, generate new one
-                self._generate_new_key()
-        else:
-            # Generate new key
-            self._generate_new_key()
+    def _ensure_encryption_key(self) -> None:
+        """Ensure encryption key exists."""
+        if not self.key_file.exists():
+            self._generate_encryption_key()
+        self._fernet = Fernet(self._load_encryption_key())
 
-    def _generate_new_key(self) -> None:
+    def _generate_encryption_key(self) -> None:
         """Generate a new encryption key."""
-        # Generate a random salt
-        salt = secrets.token_bytes(16)
+        key = Fernet.generate_key()
+        try:
+            with open(self.key_file, "wb") as f:
+                f.write(key)
 
-        # Use a default password for key derivation (in production, this should be user-provided)
-        # For now, we'll use a machine-specific identifier
-        import platform
+            # Set secure permissions on Unix-like systems
+            if platform.system() != "Windows":
+                os.chmod(self.key_file, 0o600)
+        except OSError as e:
+            raise RuntimeError(f"Failed to generate encryption key: {e}") from e
 
-        machine_id = f"{platform.node()}-{platform.machine()}-{platform.system()}"
+    def _load_encryption_key(self) -> bytes:
+        """Load encryption key from file."""
+        try:
+            with open(self.key_file, "rb") as f:
+                return f.read()
+        except OSError as e:
+            raise RuntimeError(f"Failed to load encryption key: {e}") from e
 
-        # Derive key from machine ID and salt
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=100000,
-        )
-        key = b64encode(kdf.derive(machine_id.encode()))
-
-        # Store key securely
-        self._fernet = Fernet(key)
-
-        # Save key to file with restricted permissions
-        with open(self.key_file, "wb") as f:
-            f.write(key)
-
-        # Set restrictive permissions (only readable by owner)
-        os.chmod(self.key_file, 0o600)
-
-    def _load_config(self) -> SecureConfig:
-        """Load configuration from disk."""
-        if not self.config_file.exists():
-            # Create default configuration
-            config = SecureConfig()
-            # Set default profile groups
-            try:
-                config.profile_groups = ProfileGroups(groups=self.default_profiles)
-            except Exception:
-                # If model creation fails, use empty groups
-                config.profile_groups = ProfileGroups(groups={})
-
-            self._save_config(config)
-            return config
+    def _encrypt_data(self, data: str) -> str:
+        """Encrypt data using Fernet."""
+        if self._fernet is None:
+            raise RuntimeError("Encryption not initialized")
 
         try:
-            with open(self.config_file) as f:
-                data = json.load(f)
-
-            # Load configuration
-            config = SecureConfig(**data)
-
-            # Migrate old configuration if needed
-            config = self._migrate_config(config)
-
-            return config
+            encrypted = self._fernet.encrypt(data.encode())
+            return encrypted.decode()
         except Exception as e:
-            print(f"Error loading config: {e}")
-            # Return default config on error
-            return SecureConfig()
+            raise RuntimeError(f"Failed to encrypt data: {e}") from e
 
-    def _migrate_config(self, config: SecureConfig) -> SecureConfig:
-        """Migrate configuration from older versions."""
-        # Check if we need to migrate from old location
-        old_config_path = Path(os.path.expanduser("~/.aws-adfs/config.json"))
+    def _decrypt_data(self, encrypted_data: str) -> str:
+        """Decrypt data using Fernet."""
+        if self._fernet is None:
+            raise RuntimeError("Encryption not initialized")
 
-        if old_config_path.exists() and not config.credentials:
+        try:
+            decrypted = self._fernet.decrypt(encrypted_data.encode())
+            return decrypted.decode()
+        except Exception as e:
+            raise RuntimeError(f"Failed to decrypt data: {e}") from e
+
+    def save_config(self, config: SecureConfig) -> None:
+        """Save secure configuration to file."""
+        try:
+            # Prepare data for serialization
+            data = {
+                "profiles": self._serialize_profiles(config.profiles),
+                "default_command": config.default_command,
+                "max_history": config.max_history,
+                "timeout": config.timeout,
+                "default_region": config.default_region,
+            }
+
+            # Encrypt credentials if present
+            if config.credentials:
+                credentials_data = {
+                    "username": config.credentials.username,
+                    "password": config.credentials.password.get_secret_value(),
+                    "domain": config.credentials.domain,
+                    "adfs_url": config.credentials.adfs_url,
+                    "certificate_path": config.credentials.certificate_path,
+                }
+                data["credentials"] = self._encrypt_data(json.dumps(credentials_data))
+
+            with open(self.config_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except OSError as e:
+            raise RuntimeError(f"Failed to save secure config: {e}") from e
+
+    def load_config(self) -> SecureConfig:
+        """Load secure configuration from file."""
+        if not self.config_file.exists():
+            return self._create_default_config()
+
+        try:
+            with open(self.config_file, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"Error loading secure config: {e}")
+            return self._create_default_config()
+
+        # Deserialize profiles
+        profiles = self._deserialize_profiles(data.get("profiles", {}))
+
+        # Decrypt credentials if present
+        credentials = None
+        if "credentials" in data:
             try:
-                # Load old configuration
-                with open(old_config_path) as f:
-                    old_data = json.load(f)
-
-                # Migrate profile groups if not already set
-                if "groups" in old_data and not config.profile_groups.groups:
-                    config.profile_groups = ProfileGroups(**old_data)
-
-                print(f"Migrated configuration from {old_config_path}")
+                credentials_data = json.loads(self._decrypt_data(data["credentials"]))
+                credentials = SecureCredentials(
+                    username=credentials_data["username"],
+                    password=SecretStr(credentials_data["password"]),
+                    domain=credentials_data["domain"],
+                    adfs_url=credentials_data["adfs_url"],
+                    certificate_path=credentials_data.get("certificate_path"),
+                )
             except Exception as e:
-                print(f"Error migrating old config: {e}")
+                print(f"Error decrypting credentials: {e}")
 
+        return SecureConfig(
+            profiles=profiles,
+            credentials=credentials,
+            default_command=data.get("default_command", "aws s3 ls"),
+            max_history=data.get("max_history", 100),
+            timeout=data.get("timeout", 30),
+            default_region=data.get("default_region", "us-east-1"),
+        )
+
+    def _serialize_profiles(self, profiles: dict[ProfileGroup, list[AWSProfile]]) -> dict[str, list[dict]]:
+        """Serialize profiles for JSON storage."""
+        result = {}
+        for group, profile_list in profiles.items():
+            result[group.value] = [profile.model_dump() for profile in profile_list]
+        return result
+
+    def _deserialize_profiles(self, profiles_data: dict[str, list[dict]]) -> dict[ProfileGroup, list[AWSProfile]]:
+        """Deserialize profiles from JSON data."""
+        result = {}
+        for group_str, profile_list in profiles_data.items():
+            try:
+                group = ProfileGroup(group_str)
+                result[group] = [AWSProfile(**profile) for profile in profile_list]
+            except ValueError as e:
+                print(f"Error deserializing profile group {group_str}: {e}")
+        return result
+
+    def _create_default_config(self) -> SecureConfig:
+        """Create default secure configuration."""
+        config = SecureConfig(profiles=self.default_profiles.copy())
+        self.save_config(config)
         return config
 
-    def _save_config(self, config: SecureConfig) -> None:
-        """Save configuration to disk."""
-        try:
-            with open(self.config_file, "w") as f:
-                json.dump(config.model_dump(), f, indent=2)
+    def save_credentials(self, credentials: SecureCredentials) -> None:
+        """Save encrypted credentials."""
+        config = self.load_config()
+        config.credentials = credentials
+        self.save_config(config)
 
-            # Set restrictive permissions
-            os.chmod(self.config_file, 0o600)
-        except Exception as e:
-            print(f"Error saving config: {e}")
-
-    def save_credentials(self, credentials: ADFSCredentials) -> bool:
-        """Save ADFS credentials securely.
-
-        Args:
-            credentials: ADFS credentials to save
-
-        Returns:
-            True if saved successfully
-        """
-        try:
-            # Create secure credentials (without password)
-            secure_creds = SecureCredentials(
-                username=credentials.username,
-                adfs_host=credentials.adfs_host,
-                certificate_path=credentials.certificate_path,
-            )
-
-            # Encrypt password separately
-            password_bytes = credentials.password.get_secret_value().encode("utf-8")
-            encrypted_password = self._fernet.encrypt(password_bytes)
-
-            # Save password to separate file
-            with open(self.password_file, "wb") as f:
-                f.write(encrypted_password)
-
-            # Set restrictive permissions
-            os.chmod(self.password_file, 0o600)
-
-            # Update configuration
-            self.config.credentials = secure_creds
-            self._save_config(self.config)
-
-            return True
-        except Exception as e:
-            print(f"Error saving credentials: {e}")
-            return False
-
-    def load_credentials(self) -> ADFSCredentials | None:
-        """Load ADFS credentials securely.
-
-        Returns:
-            ADFS credentials if available, None otherwise
-        """
-        if not self.config.credentials or not self.password_file.exists():
-            return None
-
-        try:
-            # Load encrypted password
-            with open(self.password_file, "rb") as f:
-                encrypted_password = f.read()
-
-            # Decrypt password
-            password_bytes = self._fernet.decrypt(encrypted_password)
-            password = password_bytes.decode("utf-8")
-
-            # Create credentials object
-            return ADFSCredentials(
-                username=self.config.credentials.username,
-                password=SecretStr(password),
-                adfs_host=self.config.credentials.adfs_host,
-                certificate_path=self.config.credentials.certificate_path,
-            )
-        except Exception as e:
-            print(f"Error loading credentials: {e}")
-            return None
-
-    def delete_credentials(self) -> bool:
-        """Delete stored credentials.
-
-        Returns:
-            True if deleted successfully
-        """
-        try:
-            # Remove password file
-            if self.password_file.exists():
-                self.password_file.unlink()
-
-            # Remove credentials from config
-            self.config.credentials = None
-            self._save_config(self.config)
-
-            return True
-        except Exception as e:
-            print(f"Error deleting credentials: {e}")
-            return False
-
-    def save_connection_settings(self, settings: ConnectionSettings) -> bool:
-        """Save connection settings.
-
-        Args:
-            settings: Connection settings to save
-
-        Returns:
-            True if saved successfully
-        """
-        try:
-            self.config.connection_settings = settings
-            self._save_config(self.config)
-            return True
-        except Exception as e:
-            print(f"Error saving connection settings: {e}")
-            return False
-
-    def get_connection_settings(self) -> ConnectionSettings:
-        """Get connection settings.
-
-        Returns:
-            Connection settings
-        """
-        return self.config.connection_settings
-
-    def save_ui_settings(self, settings: dict[str, Any]) -> bool:
-        """Save UI settings.
-
-        Args:
-            settings: UI settings to save
-
-        Returns:
-            True if saved successfully
-        """
-        try:
-            self.config.ui_settings.update(settings)
-            self._save_config(self.config)
-            return True
-        except Exception as e:
-            print(f"Error saving UI settings: {e}")
-            return False
-
-    def get_ui_settings(self) -> dict[str, Any]:
-        """Get UI settings.
-
-        Returns:
-            UI settings dictionary
-        """
-        return self.config.ui_settings
-
-    def get_profile_groups(self) -> ProfileGroups:
-        """Get profile groups.
-
-        Returns:
-            Profile groups
-        """
-        return self.config.profile_groups
+    def load_credentials(self) -> SecureCredentials | None:
+        """Load decrypted credentials."""
+        config = self.load_config()
+        return config.credentials
 
     def has_credentials(self) -> bool:
-        """Check if credentials are stored.
+        """Check if credentials are stored."""
+        config = self.load_config()
+        return config.credentials is not None
 
-        Returns:
-            True if credentials are stored
-        """
-        return self.config.credentials is not None and self.password_file.exists()
+    def clear_credentials(self) -> None:
+        """Clear stored credentials."""
+        config = self.load_config()
+        config.credentials = None
+        self.save_config(config)
 
-    def test_credentials(self) -> bool:
-        """Test if stored credentials can be decrypted.
+    def get_profiles_by_group(self, group: ProfileGroup) -> list[AWSProfile]:
+        """Get profiles for a specific group."""
+        config = self.load_config()
+        return config.profiles.get(group, [])
 
-        Returns:
-            True if credentials can be loaded successfully
-        """
-        try:
-            credentials = self.load_credentials()
-            return credentials is not None
-        except Exception:
-            return False
+    def get_all_profiles(self) -> list[AWSProfile]:
+        """Get all profiles."""
+        config = self.load_config()
+        all_profiles = []
+        for profile_list in config.profiles.values():
+            all_profiles.extend(profile_list)
+        return all_profiles
 
-    def get_config_info(self) -> dict[str, Any]:
-        """Get configuration information.
+    def update_profiles(self, profiles: dict[ProfileGroup, list[AWSProfile]]) -> None:
+        """Update profiles in configuration."""
+        config = self.load_config()
+        config.profiles = profiles
+        self.save_config(config)
 
-        Returns:
-            Configuration information dictionary
-        """
+    def get_config_summary(self) -> dict[str, Any]:
+        """Get configuration summary for display."""
+        config = self.load_config()
+
+        # Get available profile groups
+        profile_groups = [group.value for group in ProfileGroup]
+
         return {
-            "config_dir": str(self.config_dir),
-            "has_credentials": self.has_credentials(),
-            "credentials_valid": self.test_credentials(),
-            "version": self.config.version,
-            "profile_count": sum(len(profiles) for profiles in self.config.profile_groups.groups.values()),
+            "total_profiles": len(self.get_all_profiles()),
+            "profile_groups": profile_groups,
+            "has_credentials": config.credentials is not None,
+            "default_command": config.default_command,
+            "timeout": config.timeout,
+            "max_history": config.max_history,
         }
 
 
-# Global secure configuration manager
+# Global instance for compatibility
 secure_config_manager = SecureConfigManager()

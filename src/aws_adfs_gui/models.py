@@ -13,6 +13,15 @@ class ProfileGroup(str, Enum):
     PRODUCTION = "pd"
 
 
+class ExecutionStatus(str, Enum):
+    """Command execution status."""
+
+    SUCCESS = "success"
+    ERROR = "error"
+    SKIPPED = "skipped"
+    RUNNING = "running"
+
+
 class AWSProfile(BaseModel):
     """AWS profile configuration."""
 
@@ -34,9 +43,10 @@ class CommandResult(BaseModel):
     """Result of a command execution."""
 
     profile: str = Field(..., description="Profile name")
-    success: bool = Field(..., description="Whether command succeeded")
+    command: str = Field(..., description="Command that was executed")
+    status: ExecutionStatus = Field(..., description="Execution status")
     output: str = Field(default="", description="Command output")
-    error: str | None = Field(None, description="Error message if failed")
+    error: str = Field(default="", description="Error message if failed")
     duration: float = Field(..., description="Execution time in seconds")
 
 

@@ -1,28 +1,32 @@
-"""Configuration management for AWS ADFS GUI application."""
+"""Configuration management for AWS ADFS GUI."""
 
 import json
-import os
 from pathlib import Path
 
-from .models import AWSProfile, ProfileGroup, ProfileGroups
+from pydantic import BaseModel, Field
+
+from .models import AWSProfile, ProfileGroup
 
 
-class Config:
-    """Application configuration manager."""
+class ConfigModel(BaseModel):
+    """Configuration model for the application."""
 
-    def __init__(self, config_file: str | None = None):
-        """Initialize configuration.
+    profiles: dict[ProfileGroup, list[AWSProfile]] = Field(default_factory=dict)
+    default_command: str = Field(default="aws s3 ls")
+    max_history: int = Field(default=100, ge=1, le=1000)
+    timeout: int = Field(default=30, ge=1, le=300)
+    default_region: str = Field(default="us-east-1")
 
-        Args:
-            config_file: Path to configuration file. If None, uses default location.
-        """
-        if config_file is None:
-            config_file = os.path.expanduser("~/.aws-adfs/config.json")
 
-        self.config_file = Path(config_file)
-        self.config_file.parent.mkdir(parents=True, exist_ok=True)
+class ConfigManager:
+    """Manages application configuration."""
 
-        # Default profile configuration based on user requirements
+    def __init__(self, config_dir: Path | None = None):
+        self.config_dir = config_dir or Path.home() / ".aws" / "gui"
+        self.config_file = self.config_dir / "config.json"
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+
+        # Initialize default profiles
         self.default_profiles = {
             ProfileGroup.DEV: [
                 AWSProfile(
@@ -80,63 +84,69 @@ class Config:
             ],
         }
 
-        self.load_config()
-
-    def load_config(self) -> None:
+    def load_config(self) -> ConfigModel:
         """Load configuration from file."""
-        if self.config_file.exists():
-            try:
-                with open(self.config_file) as f:
-                    data = json.load(f)
-                    self.profile_groups = ProfileGroups(**data)
-            except (json.JSONDecodeError, KeyError):
-                self.profile_groups = ProfileGroups(groups=self.default_profiles)
-        else:
-            self.profile_groups = ProfileGroups(groups=self.default_profiles)
-            self.save_config()
+        if not self.config_file.exists():
+            return self._create_default_config()
 
-    def save_config(self) -> None:
+        try:
+            with open(self.config_file, encoding="utf-8") as f:
+                data = json.load(f)
+
+            # Convert profile groups from strings to enums
+            profiles = {}
+            for group_str, profile_list in data.get("profiles", {}).items():
+                group = ProfileGroup(group_str)
+                profiles[group] = [AWSProfile(**profile) for profile in profile_list]
+
+            return ConfigModel(
+                profiles=profiles,
+                default_command=data.get("default_command", "aws s3 ls"),
+                max_history=data.get("max_history", 100),
+                timeout=data.get("timeout", 30),
+                default_region=data.get("default_region", "us-east-1"),
+            )
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
+            print(f"Error loading config: {e}")
+            return self._create_default_config()
+
+    def save_config(self, config: ConfigModel) -> None:
         """Save configuration to file."""
-        with open(self.config_file, "w") as f:
-            json.dump(self.profile_groups.model_dump(), f, indent=2)
+        # Convert profile groups to strings for JSON serialization
+        profiles_dict = {}
+        for group, profile_list in config.profiles.items():
+            profiles_dict[group.value] = [profile.model_dump() for profile in profile_list]
 
-    def get_profiles(self) -> dict[ProfileGroup, list[AWSProfile]]:
-        """Get all profiles organized by groups."""
-        return self.profile_groups.groups
+        data = {
+            "profiles": profiles_dict,
+            "default_command": config.default_command,
+            "max_history": config.max_history,
+            "timeout": config.timeout,
+            "default_region": config.default_region,
+        }
 
-    def get_profile_names(self) -> list[str]:
-        """Get all profile names as a flat list."""
-        names = []
-        for profiles in self.profile_groups.groups.values():
-            names.extend([profile.name for profile in profiles])
-        return names
+        with open(self.config_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
 
-    def get_profile_by_name(self, name: str) -> AWSProfile | None:
-        """Get a specific profile by name."""
-        for profiles in self.profile_groups.groups.values():
-            for profile in profiles:
-                if profile.name == name:
-                    return profile
-        return None
+    def _create_default_config(self) -> ConfigModel:
+        """Create default configuration."""
+        config = ConfigModel(profiles=self.default_profiles.copy())
+        self.save_config(config)
+        return config
 
-    def add_profile(self, profile: AWSProfile) -> None:
-        """Add a new profile."""
-        if profile.group not in self.profile_groups.groups:
-            self.profile_groups.groups[profile.group] = []
-        self.profile_groups.groups[profile.group].append(profile)
-        self.save_config()
+    def get_profiles_by_group(self, group: ProfileGroup) -> list[AWSProfile]:
+        """Get profiles for a specific group."""
+        config = self.load_config()
+        return config.profiles.get(group, [])
 
-    def remove_profile(self, name: str) -> bool:
-        """Remove a profile by name."""
-        for group in self.profile_groups.groups:
-            profiles = self.profile_groups.groups[group]
-            for i, profile in enumerate(profiles):
-                if profile.name == name:
-                    profiles.pop(i)
-                    self.save_config()
-                    return True
-        return False
+    def get_all_profiles(self) -> list[AWSProfile]:
+        """Get all profiles."""
+        config = self.load_config()
+        all_profiles = []
+        for profile_list in config.profiles.values():
+            all_profiles.extend(profile_list)
+        return all_profiles
 
 
-# Global configuration instance
-config = Config()
+# Global instance for compatibility
+config = ConfigManager()
